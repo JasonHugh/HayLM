@@ -11,6 +11,6 @@ langchain-core==0.2.30
 langchain-openai==0.1.21
 langchain-text-splitters==0.2.2
 langchainhub==0.1.21
-PyYAML @ file:///croot/pyyaml_1698096049011/work
+PyYaml
 streamlit==1.36.0
 streamlit-keyup==0.2.4
