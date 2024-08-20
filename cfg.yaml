@@ -1,0 +1,13 @@
+api:
+  openai_api_key: hay
+  openai_base_url: http://localhost:23333/v1
+  openai_model_name: internlm2
+
+ai:
+  ai_name: 胡迪
+  cartoon_name: 玩具总动员
+  cartoon_role_name: 胡迪
+
+child:
+  child_name: 奇奇
+  child_age: 3

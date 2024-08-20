@@ -1,0 +1,19 @@
+pytorch==2.1.2
+torchvision==0.16.2 
+torchaudio==2.1.2 
+pytorch-cuda=12.1 -c 
+pytorch -c n
+vidia -y
+timm==1.0.8 
+openai==1.40.3 
+lmdeploy[all]==0.5.3
+langchain==0.2.13
+langchain-chroma==0.1.2
+langchain-community==0.2.12
+langchain-core==0.2.30
+langchain-openai==0.1.21
+langchain-text-splitters==0.2.2
+langchainhub==0.1.21
+PyYAML @ file:///croot/pyyaml_1698096049011/work
+streamlit==1.36.0
+streamlit-keyup==0.2.4
