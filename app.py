@@ -7,7 +7,7 @@ import yaml
 
 import os
 # download HayLM model to the base_path directory using git tool
-base_path = './model'
+base_path = './HayLM-model'
 os.system(f'git clone https://code.openxlab.org.cn/hayhu/HayLM.git {base_path}')
 os.system(f'cd {base_path} && git lfs pull')
 
@@ -16,7 +16,7 @@ with open("cfg.yaml", "r") as file:
 ai_name = conf["ai"]["ai_name"]
 
 # model_name_or_path = "/root/learning/InternLM/XTuner/merged_20b-w4a16-4bit" 
-model_name_or_path = "./model" 
+model_name_or_path = "./HayLM-model" 
 model_template = "internlm2"
 model_format = "hf"
 # model_format = "awq"
