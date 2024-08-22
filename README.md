@@ -31,6 +31,11 @@ HayLM是专门为儿童训练的大模型，HayLM通过对InternLM的训练和�
 - 情绪识别：通过emotion2vec语音情感表征模型来识别儿童的情绪
 - 交互模式：通过ASR和TTS技术，让儿童和HayLM可以实现语音沟通
 
+## 对话效果示例
+![image](https://github.com/user-attachments/assets/dc357753-319b-4307-85b2-8586c4a52ee9)
+![image](https://github.com/user-attachments/assets/cdc54b79-8d2b-4fe5-b9c0-1ed1fe20f944)
+![image](https://github.com/user-attachments/assets/a3dd8d5c-f93b-4f18-9539-be3273b48063)
+
 ## 运行
 ```bash
 pip install -r requirements.txt
