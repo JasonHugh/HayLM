@@ -32,9 +32,10 @@ HayLM是专门为儿童训练的大模型，HayLM通过对InternLM的训练和�
 - 交互模式：通过ASR和TTS技术，让儿童和HayLM可以实现语音沟通
 
 ## 对话效果示例
-![image](https://github.com/user-attachments/assets/dc357753-319b-4307-85b2-8586c4a52ee9)
-![image](https://github.com/user-attachments/assets/cdc54b79-8d2b-4fe5-b9c0-1ed1fe20f944)
-![image](https://github.com/user-attachments/assets/a3dd8d5c-f93b-4f18-9539-be3273b48063)
+![image](https://github.com/user-attachments/assets/3800218c-393e-4f93-8977-30370166a5aa)
+![image](https://github.com/user-attachments/assets/4bbe2477-ebd0-4dc6-9197-5edb87e81262)
+![image](https://github.com/user-attachments/assets/5225d3f0-1e29-4e9b-b346-bc9ef5124e5b)
+
 
 ## 运行
 ```bash
