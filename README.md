@@ -36,6 +36,10 @@ HayLM是专门为儿童训练的大模型，HayLM通过对InternLM的训练和�
 ![image](https://github.com/user-attachments/assets/4bbe2477-ebd0-4dc6-9197-5edb87e81262)
 ![image](https://github.com/user-attachments/assets/5225d3f0-1e29-4e9b-b346-bc9ef5124e5b)
 
+## Requirements
+Python 3.10
+PyTorch 2.2.1
+cu121
 
 ## 运行
 ```bash
