@@ -2,3 +2,6 @@ secrets/
 db/
 __pycache__/
 audio
+.ipynb_checkpoints/
+chat_history/
+user_data/

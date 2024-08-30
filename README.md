@@ -36,6 +36,24 @@ HayLM是专门为儿童训练的大模型，HayLM通过对InternLM的训练和�
 ![image](https://github.com/user-attachments/assets/4bbe2477-ebd0-4dc6-9197-5edb87e81262)
 ![image](https://github.com/user-attachments/assets/5225d3f0-1e29-4e9b-b346-bc9ef5124e5b)
 
+## 项目进度
+- [x] HayLM儿童陪伴大模型训练
+- [x] 儿童玩伴提示词
+- [x] streamlit web
+- [ ] ASR
+  - [x] SenceVoice模型推理
+  - [ ] 部署为server
+- [ ] TTS
+  - [x] Sambert模型推理
+  - [x] chatTTS模型推理
+  - [ ] 部署为server
+- [ ] sqlite+qdrant持久化记忆(working)
+- [ ] 家长配置端web
+  - [ ] 更改配置信息
+  - [ ] 切换角色（玩伴/教师）
+- [ ] 接入微信机器人
+- [ ] 开发语音聊天硬件设备
+
 ## Requirements
 Python 3.10
 PyTorch 2.2.1

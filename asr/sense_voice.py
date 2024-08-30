@@ -27,4 +27,4 @@ def get_asr_text(model, absolute_audio_path):
 		merge_length_s=15,
 	)
 	text = rich_transcription_postprocess(res[0]["text"])
-	return res[0]["text"]
+	return text

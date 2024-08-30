@@ -55,5 +55,5 @@ def get_sys_prompt(conf):
         child_age = conf["child"]["child_age"],
     )
 
-    print(SYS_PROMPT)
+    # print(SYS_PROMPT)
     return SYS_PROMPT

@@ -13,3 +13,7 @@ streamlit==1.36.0
 streamlit-keyup==0.2.4
 funasr==1.0.0
 streamlit-audiorecorder==0.0.5
+
+#tts
+sortedcontainers
+simplejson

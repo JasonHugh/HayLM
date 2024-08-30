@@ -7,6 +7,14 @@ from langchain_openai import ChatOpenAI
 import streamlit as st
 from audiorecorder import audiorecorder
 from asr import sense_voice
+from tts import chattts
+from tts import sambert_dashscope
+from tts import sambert
+
+from langchain_community.embeddings import SentenceTransformerEmbeddings
+from langchain.text_splitter import CharacterTextSplitter
+from langchain_community.vectorstores import Chroma
+from langchain.memory import VectorStoreRetrieverMemory
 
 from sys_prompt import get_sys_prompt
 
@@ -21,16 +29,25 @@ ai_name = conf["ai"]["ai_name"]
 st.set_page_config(page_title=ai_name, page_icon="🧚")
 st.title("🧚 "+ai_name)
 
+# custom css
+audio_style = """<style>
+    [data-testid="element-container"] > iframe{
+        position: fixed;
+        bottom: 55px;
+        z-index: 999;
+        width: 42px;
+    }
+    [data-testid="stBottomBlockContainer"] {
+        padding-left: 6.1rem
+    }
+</style>"""
+st.write(audio_style, unsafe_allow_html=True)
+audio = audiorecorder("🎙️", "🛑")
+
 USER_SESSION_ID = "any"
 
 # Set up memory
-db_path = "db"
-if not os.path.exists(db_path):
-    os.makedirs(db_path)
 msgs = StreamlitChatMessageHistory()
-# msgs = SQLChatMessageHistory(
-#     session_id=USER_SESSION_ID, connection_string="sqlite:///db/"+USER_SESSION_ID+".db"
-# )
 if len(msgs.messages) == 0:
     msgs.add_ai_message("""
 我是{ai_name}，你的虚拟玩伴，能够与你智能互动，学习并适应你的性格特点，陪伴你快乐成长。快来和我聊天吧！
@@ -45,14 +62,15 @@ prompt = ChatPromptTemplate.from_messages(
         ("human", "{question}"),
     ]
 )
-
-chain = prompt | ChatOpenAI(
+llm = ChatOpenAI(
     api_key = OPENAI_API_KEY,
     base_url = OPENAI_BASE_URL,
     model_name = OPENAI_MODEL_NAME, 
     temperature = 0.8, 
     top_p = 1,
     max_tokens = 256)
+
+chain = (prompt | llm)
 chain_with_history = RunnableWithMessageHistory(
     chain,
     lambda session_id: msgs,
@@ -68,59 +86,40 @@ for msg in msgs.messages:
     st.chat_message(type).write(msg.content)
 
 # ASR Start
+asr_text = ""
+
 asr_model = sense_voice.load_asr_model()
 
-# audio input
-audio_style = """<style>
-    [data-testid="stHorizontalBlock"] {
-        position: fixed;
-        bottom: 48px;
-        z-index: 999;
-        width: 120px;
-    }
-    [data-testid="stBottomBlockContainer"] {
-        padding-left: 75px
-    }
-</style>"""
-st.write(audio_style, unsafe_allow_html=True)
-audio_input, text_input = st.columns(2)
-with audio_input:
-    audio = audiorecorder("🎙️", "🛑")
-    if len(audio) > 0:
-        audio_folder = "audio"
-        if not os.path.exists(audio_folder):
-            os.makedirs(audio_folder)
-        audio_path = "{}/{}.wav".format(audio_folder, datetime.now().strftime("%Y-%m-%d-%H-%M-%S"))
-        audio.export(audio_path, format="wav")
+if len(audio) > 0:
+    audio_folder = "audio"
+    if not os.path.exists(audio_folder):
+        os.makedirs(audio_folder)
+    audio_path = "{}/{}.wav".format(audio_folder, datetime.now().strftime("%Y-%m-%d-%H-%M-%S"))
+    audio.export(audio_path, format="wav")
 
-        # get asr text
-        text = sense_voice.get_asr_text(asr_model, os.path.abspath(audio_path))
-        print("User: "+text)
-        os.remove(audio_path)
-
-        # ask llm
-        if text:
-            st.chat_message("human").write(text)
-            # Note: new messages are saved to history automatically by Langchain during run
-            config = {"configurable": {"session_id": USER_SESSION_ID}}
-            response = chain_with_history.stream({"question": text}, config)
-            with st.chat_message("ai"):
-                st.write_stream(response)
-
-    #     # To play audio in frontend:
-    #     st.audio(audio.export().read())  
-    #     # To save audio to a file, use pydub export method:
-    #     audio.export("audio.wav", format="wav")
-    #     # To get audio properties, use pydub AudioSegment properties:
-    #     st.write(f"Frame rate: {audio.frame_rate}, Frame width: {audio.frame_width}, Duration: {audio.duration_seconds} seconds")
+    # get asr text
+    asr_text = sense_voice.get_asr_text(asr_model, os.path.abspath(audio_path))
+    print("User: "+asr_text)
+    os.remove(audio_path)
 
 # ASR End
 
+# tts_model = sambert.load_tts_model()
 # If user inputs a new prompt, generate and draw a new response
-if prompt := st.chat_input():
+if prompt := st.chat_input() or asr_text:
     st.chat_message("human").write(prompt)
     # Note: new messages are saved to history automatically by Langchain during run
     config = {"configurable": {"session_id": USER_SESSION_ID}}
     response = chain_with_history.stream({"question": prompt}, config)
+    reponse_text = ''
     with st.chat_message("ai"):
-        st.write_stream(response)
+        # st.write_stream(response)
+        placeholder = st.empty()
+        for r in response:
+            reponse_text += r.content
+            placeholder.markdown(reponse_text)
+        # get tts
+        with st.spinner('Generating audio...'):
+            audio_path = sambert_dashscope.get_tts_audio(reponse_text)
+            # audio_path = sambert.get_tts_audio(tts_model, reponse_text)
+        st.audio(audio_path, format="audio/wav", loop=False, autoplay=True)
