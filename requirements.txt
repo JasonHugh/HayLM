@@ -17,3 +17,9 @@ streamlit-audiorecorder==0.0.5
 #tts
 sortedcontainers
 simplejson
+
+# server
+python-jose[cryptography]
+passlib
+fastapi 
+uvicorn

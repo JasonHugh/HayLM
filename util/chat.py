@@ -1,9 +1,8 @@
 from openai import OpenAI
 import os
 import yaml
-from sys_prompt import get_sys_prompt
  
-with open("secrets/cfg.yaml", "r", encoding='utf-8') as file:
+with open("cfg.yaml", "r", encoding='utf-8') as file:
     conf = yaml.safe_load(file)
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY") or conf["api"]["openai_api_key"]
@@ -44,3 +43,16 @@ def add_ai_message(history:list, message:str):
     history.append({"role": "assistent", "content": message})
     return history
 
+if __name__ == "__main__":
+    get_response([
+        {
+    "role":"user",
+        "content":"你好"
+        },{
+    "role":"assistant",
+        "content":"你好！有什么我可以帮助你的吗？"
+        },{
+    "role":"user",
+        "content":"教我做披萨"
+        }
+    ])

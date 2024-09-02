@@ -13,7 +13,6 @@ def get_tts_audio(text):
                                 text=text,
                                 sample_rate=48000,
                                 format='wav')
-
     if result.get_audio_data() is not None:
         audio_folder = "audio"
         audio_path = "{}/out-{}.wav".format(audio_folder, datetime.now().strftime("%Y-%m-%d-%H-%M-%S"))

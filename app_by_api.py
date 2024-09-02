@@ -11,11 +11,6 @@ from tts import chattts
 from tts import sambert_dashscope
 from tts import sambert
 
-from langchain_community.embeddings import SentenceTransformerEmbeddings
-from langchain.text_splitter import CharacterTextSplitter
-from langchain_community.vectorstores import Chroma
-from langchain.memory import VectorStoreRetrieverMemory
-
 from sys_prompt import get_sys_prompt
 
 with open("secrets/cfg.yaml", "r", encoding='utf-8') as file:
@@ -47,7 +42,13 @@ audio = audiorecorder("🎙️", "🛑")
 USER_SESSION_ID = "any"
 
 # Set up memory
+db_path = "db"
+if not os.path.exists(db_path):
+    os.makedirs(db_path)
 msgs = StreamlitChatMessageHistory()
+# msgs = SQLChatMessageHistory(
+#     session_id=USER_SESSION_ID, connection_string="sqlite:///db/"+USER_SESSION_ID+".db"
+# )
 if len(msgs.messages) == 0:
     msgs.add_ai_message("""
 我是{ai_name}，你的虚拟玩伴，能够与你智能互动，学习并适应你的性格特点，陪伴你快乐成长。快来和我聊天吧！
@@ -62,15 +63,14 @@ prompt = ChatPromptTemplate.from_messages(
         ("human", "{question}"),
     ]
 )
-llm = ChatOpenAI(
+
+chain = prompt | ChatOpenAI(
     api_key = OPENAI_API_KEY,
     base_url = OPENAI_BASE_URL,
     model_name = OPENAI_MODEL_NAME, 
     temperature = 0.8, 
     top_p = 1,
     max_tokens = 256)
-
-chain = (prompt | llm)
 chain_with_history = RunnableWithMessageHistory(
     chain,
     lambda session_id: msgs,
@@ -112,12 +112,14 @@ if prompt := st.chat_input() or asr_text:
     config = {"configurable": {"session_id": USER_SESSION_ID}}
     response = chain_with_history.stream({"question": prompt}, config)
     reponse_text = ''
+    print(msgs)
     with st.chat_message("ai"):
         # st.write_stream(response)
         placeholder = st.empty()
         for r in response:
             reponse_text += r.content
             placeholder.markdown(reponse_text)
+            print(r)
         # get tts
         with st.spinner('Generating audio...'):
             audio_path = sambert_dashscope.get_tts_audio(reponse_text)

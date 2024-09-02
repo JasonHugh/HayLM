@@ -1,84 +1,146 @@
-import yaml, os
-from datetime import datetime
-from langchain_community.chat_message_histories import StreamlitChatMessageHistory
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain_core.runnables.history import RunnableWithMessageHistory
-from langchain_openai import ChatOpenAI
-from asr import sense_voice
-from tts import chattts
-from tts import sambert_dashscope
-from tts import sambert
+#pip install python-jose,pip install passlib[bcrypt]
+from datetime import datetime, timedelta
+from typing import Union
+ 
+from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from jose import JWTError, jwt
+from passlib.context import CryptContext
+from pydantic import BaseModel
+ 
+# to get a string like this run:
+# openssl rand -hex 32
+SECRET_KEY = "yinyusecuritykey"
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
+ 
+ 
+fake_users_db = {
+    "johndoe": {
+        "username": "johndoe",
+        "full_name": "John Doe",
+        "email": "johndoe@example.com",
+        "hashed_password": "$2b$12$Iy1FxkhNXVtoJjDfTVTo9erntJ2FFFPJKZbQH3FcBFijS/zNCzGK.",
+        "disabled": False,
+    }
+}
+ 
 
-from langchain_community.embeddings import SentenceTransformerEmbeddings
-from langchain.text_splitter import CharacterTextSplitter
-from langchain_community.vectorstores import Chroma
-from langchain.memory import VectorStoreRetrieverMemory
-from langchain.embeddings import HuggingFaceEmbeddings
-
-from sys_prompt import get_sys_prompt
-
-with open("secrets/cfg.yaml", "r", encoding='utf-8') as file:
-    conf = yaml.safe_load(file)
-
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY") or conf["api"]["openai_api_key"]
-OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL") or conf["api"]["openai_base_url"]
-OPENAI_MODEL_NAME = os.getenv("OPENAI_MODEL_NAME") or conf["api"]["openai_model_name"]
-
-ai_name = conf["ai"]["ai_name"]
-
-
-USER_SESSION_ID = "any"
-
-# Set up memory
-db_path = "db"
-if not os.path.exists(db_path):
-    os.makedirs(db_path)
-msgs = StreamlitChatMessageHistory()
-# msgs = SQLChatMessageHistory(
-#     session_id=USER_SESSION_ID, connection_string="sqlite:///db/"+USER_SESSION_ID+".db"
-# )
-if len(msgs.messages) == 0:
-    msgs.add_ai_message("""
-我是{ai_name}，你的虚拟玩伴，能够与你智能互动，学习并适应你的性格特点，陪伴你快乐成长。快来和我聊天吧！
-""".format(ai_name=ai_name))
-    
-# save chroma
-embedding_function = HuggingFaceEmbeddings(
-            model_name="shibing624/text2vec-base-chinese",
-            model_kwargs={"device": "cuda"},
-            encode_kwargs={"batch_size": 1, "normalize_embeddings": True},
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+ 
+ 
+class TokenData(BaseModel):
+    username: Union[str, None] = None
+ 
+ 
+class User(BaseModel):
+    username: str
+    email: Union[str, None] = None
+    full_name: Union[str, None] = None
+    disabled: Union[bool, None] = None
+ 
+ 
+class UserInDB(User):
+    hashed_password: str
+ 
+ 
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+ 
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+ 
+app = FastAPI()
+ 
+ 
+def verify_password(plain_password, hashed_password):
+    return pwd_context.verify(plain_password, hashed_password)
+ 
+ 
+def get_password_hash(password):
+    return pwd_context.hash(password)
+ 
+ 
+def get_user(db, username: str):
+    if username in db:
+        user_dict = db[username]
+        return UserInDB(**user_dict)
+ 
+ 
+def authenticate_user(fake_db, username: str, password: str):
+    user = get_user(fake_db, username)
+    if not user:
+        return False
+    if not verify_password(password, user.hashed_password):
+        return False
+    return user
+ 
+ 
+def create_access_token(data: dict, expires_delta: Union[timedelta, None] = None):
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=15)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+ 
+ 
+async def get_current_user(token: str = Depends(oauth2_scheme)):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            raise credentials_exception
+        token_data = TokenData(username=username)
+    except JWTError:
+        raise credentials_exception
+    user = get_user(fake_users_db, username=token_data.username)
+    if user is None:
+        raise credentials_exception
+    return user
+ 
+ 
+async def get_current_active_user(current_user: User = Depends(get_current_user)):
+    if current_user.disabled:
+        raise HTTPException(status_code=400, detail="Inactive user")
+    return current_user
+ 
+ 
+@app.post("/token", response_model=Token)
+async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
+    user = authenticate_user(fake_users_db, form_data.username, form_data.password)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
         )
-vectorstore = Chroma(embedding_function)
-retriever = vectorstore.as_retriever(search_kwargs=dict(k=1))
-memory = VectorStoreRetrieverMemory(retriever=retriever)
-print(memory.load_memory_variables())
-
-# Set up the LangChain, passing in Message History
-sys_prompt = get_sys_prompt(conf)
-prompt = ChatPromptTemplate.from_messages(
-    [
-        ("system", sys_prompt),
-        MessagesPlaceholder(variable_name="history"),
-        ("human", "{question}"),
-    ]
-)
-llm = ChatOpenAI(
-    api_key = OPENAI_API_KEY,
-    base_url = OPENAI_BASE_URL,
-    model_name = OPENAI_MODEL_NAME, 
-    temperature = 0.8, 
-    top_p = 1,
-    max_tokens = 256)
-
-chain = (prompt | llm)
-chain_with_history = RunnableWithMessageHistory(
-    chain,
-    lambda session_id: memory,
-    input_messages_key="question",
-    history_messages_key="history",
-)
-
-config = {"configurable": {"session_id": USER_SESSION_ID}}
-response = chain_with_history.stream({"question": prompt}, config)
-for r in response:
-    print(r.content, end=" ")
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": user.username}, expires_delta=access_token_expires
+    )
+    return {"access_token": access_token, "token_type": "bearer"}
+ 
+ 
+@app.get("/users/me/", response_model=User)
+async def read_users_me(current_user: User = Depends(get_current_active_user)):
+    return current_user
+ 
+ 
+@app.get("/users/me/items/")
+async def read_own_items(current_user: User = Depends(get_current_active_user)):
+    return [{"item_id": "Foo", "owner": current_user.username}]
+ 
+ 
+if __name__ == '__main__':
+    # import uvicorn
+    # uvicorn.run(app, host="127.0.0.1", port=8000)
+    print(get_password_hash("yinyusecurity")) #此为“yinyusecurity”加密后的 👇，然后放在fake_users_db中
+    #$2b$12$Iy1FxkhNXVtoJjDfTVTo9erntJ2FFFPJKZbQH3FcBFijS/zNCzGK.
