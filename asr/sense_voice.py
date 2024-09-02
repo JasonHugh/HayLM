@@ -1,10 +1,8 @@
 from funasr import AutoModel
 from funasr.utils.postprocess_utils import rich_transcription_postprocess
-import streamlit as st
 
 model_dir = "iic/SenseVoiceSmall"
 
-@st.cache_resource
 def load_asr_model():
 	model = AutoModel(
 		model=model_dir,

@@ -1,11 +1,12 @@
 from fastapi import FastAPI, File, UploadFile, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.responses import FileResponse
 from asr import sense_voice
+from tts import sambert
 import os, yaml
-from datetime import datetime
 from util import chat
 from sys_prompt import get_sys_prompt
-from util import db
+from util.db import SQLiteTool
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from datetime import datetime, timedelta
@@ -14,14 +15,26 @@ from pydantic import ValidationError
 
 app = FastAPI()
 
+# sqlite init
+db_dir = "user_data/sqlite"
+if not os.path.exists(db_dir):
+    os.makedirs(db_dir)
+sqlite_tool = SQLiteTool(db_dir + '/chat.db')
+sqlite_tool.connect()
+
+# auth
 JWT_SECRET_KEY = "haylm"
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRE_DAYS = 90
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
+# asr tts model load
+tts_model = sambert.load_tts_model()
 asr_model = sense_voice.load_asr_model()
+
+# audio dir init
 user_dir = "user_data"
 user_audio_dir = user_dir + "/input_audio"
 if not os.path.exists(user_audio_dir):
@@ -53,7 +66,7 @@ def register(name: str = None, phone: str = None, SN: str = None, password: str 
     except ValidationError as e:
         return {"success": False, "message": e.json()}
     
-    success, result = db.add_user(user) 
+    success, result = sqlite_tool.add_user(user) 
     if success:
         # generate jwt token
         access_token = __create_access_token(
@@ -87,8 +100,8 @@ def __create_access_token(data: dict, expires_delta: timedelta):
     encoded_jwt = jwt.encode(to_encode, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
     return encoded_jwt
 
-def __authenticate_user(user_name, password):
-    user = db.get_user(user_name)
+def __authenticate_user(username, password):
+    user = sqlite_tool.get_user(username)
     if user and pwd_context.verify(password, user.password):
         return user
     else:
@@ -107,7 +120,7 @@ async def __get_current_user(token: str = Depends(oauth2_scheme)):
             raise credentials_exception
     except JWTError:
         raise credentials_exception
-    user = db.get_user(username=username)
+    user = sqlite_tool.get_user(username=username)
     if not user:
         raise credentials_exception
     return user
@@ -120,13 +133,25 @@ def config(user: User = Depends(__get_current_user)):
 
 @app.post("/chat/response")
 async def get_response(ser: User = Depends(__get_current_user), user_input: str = None, wav: UploadFile = File(...)):
+    print(f"start chat {datetime.now()}")
     # asr
-    audio_path = "{}/{}.wav".format(user_audio_dir, datetime.now().strftime("%Y-%m-%d-%H-%M-%S"))
-    with open(audio_path, "wb") as f:
+    input_audio_path = "{}/{}.wav".format(user_audio_dir, datetime.now().strftime("%Y-%m-%d-%H-%M-%S"))
+    with open(input_audio_path, "wb") as f:
         f.write(wav.file.read())
-    user_input = sense_voice.get_asr_text(asr_model, os.path.abspath(audio_path))
-    print("User Input: "+user_input)
-    os.remove(audio_path)
+    user_input = sense_voice.get_asr_text(asr_model, os.path.abspath(input_audio_path))
+    print("User: "+user_input)
+    os.remove(input_audio_path)
 
     # get response from llm
-    chat.get_response()
+    response = chat.get_response([
+        {"role": "system", "content": get_sys_prompt(conf)},
+        {"role": "user", "content": user_input},
+    ])
+    print("AI: "+response)
+
+    # tts
+    output_audio_path = sambert.get_tts_audio(tts_model, response)
+    print("output audio path: "+ output_audio_path)
+
+    print(f"end chat {datetime.now()}")
+    return FileResponse(output_audio_path, media_type="audio/wav")

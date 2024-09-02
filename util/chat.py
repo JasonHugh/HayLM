@@ -2,7 +2,7 @@ from openai import OpenAI
 import os
 import yaml
  
-with open("cfg.yaml", "r", encoding='utf-8') as file:
+with open("secrets/cfg.yaml", "r", encoding='utf-8') as file:
     conf = yaml.safe_load(file)
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY") or conf["api"]["openai_api_key"]
@@ -32,8 +32,7 @@ def get_response(messages):
         stream=False,
         temperature=0.8
     )
-    print(completion.choices[0].message)
-    return completion.choices[0].message
+    return completion.choices[0].message.content
 
 def add_user_message(history:list, message:str):
     history.append({"role": "user", "content": message})
