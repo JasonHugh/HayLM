@@ -10,7 +10,7 @@ def load_asr_model():
 		remote_code="./model.py",  
 		vad_model="fsmn-vad",
 		vad_kwargs={"max_single_segment_time": 30000},
-		device="cuda:0",
+		device="cpu",
 	)
 	return model
 

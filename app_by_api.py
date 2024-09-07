@@ -9,6 +9,7 @@ from audiorecorder import audiorecorder
 from asr import sense_voice
 from tts import chattts
 from tts import sambert_dashscope
+from tts import cosyvoice_dashscope
 from tts import sambert
 
 from sys_prompt import get_sys_prompt
@@ -30,7 +31,7 @@ audio_style = """<style>
         position: fixed;
         bottom: 55px;
         z-index: 999;
-        width: 42px;
+        width: 45px;
     }
     [data-testid="stBottomBlockContainer"] {
         padding-left: 6.1rem
@@ -119,9 +120,8 @@ if prompt := st.chat_input() or asr_text:
         for r in response:
             reponse_text += r.content
             placeholder.markdown(reponse_text)
-            print(r)
         # get tts
         with st.spinner('Generating audio...'):
-            audio_path = sambert_dashscope.get_tts_audio(reponse_text)
+            audio_path = cosyvoice_dashscope.get_tts_audio(reponse_text)
             # audio_path = sambert.get_tts_audio(tts_model, reponse_text)
         st.audio(audio_path, format="audio/wav", loop=False, autoplay=True)

@@ -25,22 +25,14 @@ def get_streaming_response(messages):
     #     print(chunk.choices[0].delta.content, end="")
     return completion
 
-def get_response(messages):
+def get_response(messages, model_name):
     completion = client.chat.completions.create(
-        model=OPENAI_MODEL_NAME,
+        model=model_name,
         messages=messages,
         stream=False,
         temperature=0.8
     )
     return completion.choices[0].message.content
-
-def add_user_message(history:list, message:str):
-    history.append({"role": "user", "content": message})
-    return history
-
-def add_ai_message(history:list, message:str):
-    history.append({"role": "assistent", "content": message})
-    return history
 
 if __name__ == "__main__":
     get_response([
