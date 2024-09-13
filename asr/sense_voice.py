@@ -1,9 +1,10 @@
 from funasr import AutoModel
 from funasr.utils.postprocess_utils import rich_transcription_postprocess
+import os
 
 model_dir = "iic/SenseVoiceSmall"
 
-def load_asr_model():
+def load_asr_model() -> AutoModel:
 	model = AutoModel(
 		model=model_dir,
 		trust_remote_code=True,
@@ -14,7 +15,7 @@ def load_asr_model():
 	)
 	return model
 
-def get_asr_text(model, absolute_audio_path):
+def get_asr_text(model: AutoModel, absolute_audio_path):
 	res = model.generate(
 		input=absolute_audio_path,
 		cache={},
@@ -26,3 +27,6 @@ def get_asr_text(model, absolute_audio_path):
 	)
 	text = rich_transcription_postprocess(res[0]["text"])
 	return text
+
+if __name__ == "__main__":
+	print(get_asr_text(load_asr_model(), "/root/learning/HayLM/user_data/input_audio/out-2024-09-07-20-41-26.wav"))

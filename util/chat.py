@@ -25,7 +25,7 @@ def get_streaming_response(messages):
     #     print(chunk.choices[0].delta.content, end="")
     return completion
 
-def get_response(messages, model_name):
+def get_response(messages, model_name = OPENAI_MODEL_NAME):
     completion = client.chat.completions.create(
         model=model_name,
         messages=messages,

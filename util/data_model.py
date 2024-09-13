@@ -39,8 +39,8 @@ class History(BaseModel):
     session_id: int = None
     role: Annotated[str, StringConstraints(pattern=r'user|assistant')]
     content: str
-    is_important: bool
-    create_time: str
+    is_important: bool = None
+    create_time: str = None
 
 
 class Report(BaseModel):

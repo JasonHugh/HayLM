@@ -122,6 +122,6 @@ if prompt := st.chat_input() or asr_text:
             placeholder.markdown(reponse_text)
         # get tts
         with st.spinner('Generating audio...'):
-            audio_path = cosyvoice_dashscope.get_tts_audio(reponse_text)
+            audio_path = sambert_dashscope.get_tts_audio(reponse_text)
             # audio_path = sambert.get_tts_audio(tts_model, reponse_text)
         st.audio(audio_path, format="audio/wav", loop=False, autoplay=True)
