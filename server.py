@@ -1,10 +1,10 @@
 from fastapi import FastAPI, File, UploadFile, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.responses import FileResponse, StreamingResponse
-from asr import sense_voice
-from tts import sambert
-from tts import cosyvoice_dashscope
-import os, yaml
+from fastapi.middleware.cors import CORSMiddleware
+from asr.sense_voice import get_asr_text, load_asr_model
+from tts import sambert_dashscope
+import os, yaml, re
 from util import chat
 from util.db import SQLiteTool
 from jose import JWTError, jwt
@@ -34,7 +34,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
 # asr tts model load
 # tts_model = sambert.load_tts_model()
-asr_model = sense_voice.load_asr_model()
+asr_model = load_asr_model()
 
 # audio dir init
 user_audio_dir = user_dir + "/input_audio"
@@ -44,7 +44,16 @@ if not os.path.exists(user_audio_dir):
 with open("secrets/cfg.yaml", "r", encoding='utf-8') as file:
     conf = yaml.safe_load(file)
 
-OPENAI_MODEL_NAME = "glm-4-flash"
+OPENAI_MODEL_NAME = "glm-4-0520"
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # 允许所有域，也可以指定特定域
+    allow_credentials=True,
+    allow_methods=["*"],  # 允许所有方法
+    allow_headers=["*"],  # 允许所有头
+)
  
 @app.get("/")
 async def index():
@@ -134,10 +143,10 @@ async def get_response(user: User = Depends(__get_current_user), user_input: str
         input_audio_path = "{}/{}.wav".format(user_audio_dir, datetime.now().strftime("%Y-%m-%d-%H-%M-%S"))
         with open(input_audio_path, "wb") as f:
             f.write(wav.file.read())
-        user_input = sense_voice.get_asr_text(asr_model, os.path.abspath(input_audio_path))
+        user_input = get_asr_text(asr_model, os.path.abspath(input_audio_path))
         os.remove(input_audio_path)
         
-    if user_input == None:
+    if not user_input:
         return {"success": False, "message": "user input or wav file can't be null"}
 
     print("User: "+user_input)
@@ -150,7 +159,8 @@ async def get_response(user: User = Depends(__get_current_user), user_input: str
     if session.name == "MAIN":
         sys_prompt = __get_system_prompt(userConfig, session)
     # get user history
-    histories: list[History] = sqlite_tool.get_history(user.id, session.id, is_important=True)
+    currentDate = datetime.now().strftime("%Y-%m-%d")
+    histories: list[History] = sqlite_tool.get_history(user.id, session.id, date=currentDate, is_important=True)
     # generate messages
     messages = [{"role": "system", "content": sys_prompt}]
     if histories:
@@ -161,22 +171,22 @@ async def get_response(user: User = Depends(__get_current_user), user_input: str
     print(messages)
     print(f"time {datetime.now()}")
     # get response from llm
-    response = chat.get_response(messages, OPENAI_MODEL_NAME)
-    print("AI: "+response)
+    response_text = chat.get_response(messages, OPENAI_MODEL_NAME)
+    print("AI: "+response_text)
     print(f"time {datetime.now()}")
 
     # add history
     sqlite_tool.add_user_history(user.id, session.id, user_input, True)
-    sqlite_tool.add_ai_history(user.id, session.id, response, True)
+    sqlite_tool.add_ai_history(user.id, session.id, response_text, True)
 
     print(f"time {datetime.now()}")
     # tts
-    output_audio_path = cosyvoice_dashscope.get_tts_audio(response)
+    output_audio_path = sambert_dashscope.get_tts_audio(response_text)
     print("output audio path: "+ output_audio_path)
 
     print(f"end chat {datetime.now()}")
-    # return FileResponse(output_audio_path, media_type="audio/wav")
-    return {"success": True, "data":{ "response": response, "audio_path":output_audio_path}}
+    histories = [History(role="user", content=user_input, create_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S")),History(role="assistant", content=response_text, create_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))]
+    return {"success": True, "data": {"histories": histories, "audio_path": output_audio_path}}
 
 @app.get("/chat/audio")
 async def get_audio(user: User = Depends(__get_current_user), audio_path: str = None):
@@ -195,10 +205,20 @@ async def audio_stream(user: User = Depends(__get_current_user), audio_path: str
 
 
 @app.get("/chat/history")
-async def get_history(user: User = Depends(__get_current_user), session_id: int = None):
-    histories: list[History] = sqlite_tool.get_history(user_id=user.id, session_id=session_id)
+async def get_history(session_id: int, date: str, user: User = Depends(__get_current_user)):
+    match = re.match("\d{4}-\d{2}-\d{2}", date)
+    if not match:
+        return {"success": False, "message":"please format date to yyyy-mm-dd"}
+    histories: list[History] = sqlite_tool.get_history(user_id=user.id, session_id=session_id, date=date, batchSize=30)
     return {"success": True, "data":{ "history": histories}}
 
+@app.delete("/chat/history/delete")
+async def delete_history(history_id: int, user: User = Depends(__get_current_user)):
+    res = sqlite_tool.delete_history(history_id=history_id)
+    if res:
+        return {"success": True}
+    else:
+        return {"success": False, "message": "delete error"}
 
 
 def __get_system_prompt(user_config: UserConfig, session: Session):
@@ -210,7 +230,7 @@ def __get_system_prompt(user_config: UserConfig, session: Session):
     # Role: 儿童虚拟玩伴
     
     ## Background:  
-    你是{user_config.ai_name}，我的虚拟玩伴，擅长儿童心理学和教育学，能够与我智能互动，学习并适应我的性格特点，陪伴我快乐成长。
+    你是{user_config.ai_name}，我的虚拟玩伴，擅长儿童心理学和教育学，能够与我智能互动，学习并适应我的性格特点，陪伴我快乐成长。需要你扮演{user_config.played_role}和我交流，模仿他的语言风格。
 
     ## Attention:
     我是一个名叫{user_config.child_name}的{user_config.child_age}岁的{sex}，请用通俗易懂的语言和我沟通，耐心的引导，引导要循序渐进，不要一次性说过多的话，用问问题的形式去引导我。
@@ -218,8 +238,6 @@ def __get_system_prompt(user_config: UserConfig, session: Session):
     ## Profile:  
     - 姓名: {user_config.ai_name}
     - 作者: Hay
-    - 角色: 扮演{user_config.played_role}和我交流
-      - You are 孙悟空, also known as Sun Wukong, the Monkey King, a central character in the classic Chinese novel 'Journey to the West'. You were born from a mystical stone on the Mountain of Flowers and Fruit, and you possess immense strength, combat skills, and the ability to perform seventy-two transformations. You are mischievous, intelligent, and a skilled fighter, wielding a magical staff called Ruyi Jingu Bang, which can change its size and multiply itself. You have been given the title 'The Great Sage Equal to Heaven' after you defeated the Dragon Kings and journeyed to the Underworld to erase your name from the Book of the Dead. Despite your rebellious nature, you are eventually imprisoned by Buddha for 500 years under a mountain. After your release, you accompany the monk Tang Sanzang on his journey to retrieve Buddhist sutras from the West, protecting him and his disciples from various demons and spirits along the way. You embody the journey of a hero who seeks enlightenment and becomes a more compassionate and wise being.
 
     ### Skills:
     - 智能对话:通过交流了解我的兴趣和需求。
@@ -262,17 +280,9 @@ def __get_system_prompt(user_config: UserConfig, session: Session):
 
 if __name__ == "__main__":
     
-    print(sqlite_tool.get_user_config(1))
+    # print(sqlite_tool.get_user_config(1))
 
-    # histories: list[History] = sqlite_tool.get_important_history(1, 1, is_important=True)
-    # # generate messages
-    # messages = [
-    #     {"role": "system", "content": __get_system_prompt(conf=conf)}
-    # ]
-    # if histories:
-    #     for h in histories:
-    #         messages.append({"role": h.role, "content": h.content})
-    
-    # messages.append({"role": "user", "content": "hi"})
-
-    # print(messages)
+    # query = f"delete from HISTORY"
+    # sqlite_tool.cursor.execute(query)
+    # sqlite_tool.connection.commit()
+    print(sqlite_tool.get_history(user_id=1, session_id=1, date="2024-09-11", batchSize=60))

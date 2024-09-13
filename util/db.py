@@ -108,9 +108,9 @@ class SQLiteTool:
     def add_ai_history(self, user_id, session_id, content, is_important:bool):
         self.__add_history(user_id, session_id, "assistant", content, is_important)
 
-    def __add_history(self, user_id, session_id, role, content, is_important:bool):
+    def __add_history(self, user_id, session_id, role, content: str, is_important:bool):
         try:
-            self.cursor.execute(f"INSERT INTO HISTORY (USER_ID,SESSION_ID,ROLE,CONTENT,IS_IMPORTANT,CREATE_TIME) VALUES ({user_id}, {session_id}, '{role}', '{content}',{is_important}, CURRENT_TIMESTAMP)")
+            self.cursor.execute("INSERT INTO HISTORY (USER_ID,SESSION_ID,ROLE,CONTENT,IS_IMPORTANT,CREATE_TIME) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)", (user_id,session_id,role,content,is_important))
             self.connection.commit()
             return True, self.cursor.lastrowid
         except Exception as e:
@@ -201,21 +201,32 @@ class SQLiteTool:
         else:
             return None
         
-    def get_history(self, user_id: int, session_id: int, is_important: bool = None) -> list[History]:
+    def get_history(self, user_id: int, session_id: int, date: str, is_important: bool = None, batchSize: int = 10) -> list[History]:
         if is_important == None:
             important_sql = ""
         else:
             important_sql = f"and is_important={is_important}"
-        query = f"SELECT id, user_id, session_id, role, content, is_important, create_time FROM HISTORY WHERE user_id={user_id} and session_id={session_id} {important_sql} order by id"
+        query = f"SELECT id, user_id, session_id, role, content, is_important, create_time FROM HISTORY WHERE user_id={user_id} and session_id={session_id} and date(create_time)='{date}' {important_sql} order by id desc limit {batchSize*2}"
         self.cursor.execute(query)
         result = self.cursor.fetchall()
         if result:
             histories = []
             for r in result:
                 histories.append(History(id = r[0], user_id = r[1], session_id = r[2], role = r[3], content = r[4], is_important = r[5], create_time = r[6]))
-            return histories
+            return list(reversed(histories))
         else:
             return None
+        
+    def delete_history(self, history_id: int) -> bool:
+        try:
+            query = f"delete from HISTORY where ID={history_id}"
+            self.cursor.execute(query)
+            self.connection.commit()
+            return True
+        except Exception as e:
+            print(e.with_traceback())
+            self.connection.rollback()
+            return False
 
 
 
@@ -227,11 +238,11 @@ if __name__ == "__main__":
     sqlite_tool.connect()
 
     # sqlite_tool.init_table()
-    # sqlite_tool.add_user_history(1,1,"hi",True)
+    # sqlite_tool.add_user_history(1,1,"\"sxs\"",True)
     # print(sqlite_tool.get_important_history(1,1, is_important=True))
-    print(sqlite_tool.get_user_config(1))
+    print(sqlite_tool.get_history(1,1,"2024-09-09"))
 
 
-    query = f"delete from USER_CONFIG"
-    sqlite_tool.cursor.execute(query)
-    sqlite_tool.connection.commit()
+    # query = f"delete from HISTORY"
+    # sqlite_tool.cursor.execute(query)
+    # sqlite_tool.connection.commit()
