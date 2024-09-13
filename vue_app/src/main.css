@@ -1,0 +1,14 @@
+body, #app{
+  overflow: hidden;
+  height: 100%;
+}
+.t-navbar{
+    z-index: 1;
+}
+main{
+  top:48px;
+  padding-bottom: 56px;
+  position: relative;
+  height: calc(100vh - 48px - 56px);
+  overflow-y: scroll;
+}
