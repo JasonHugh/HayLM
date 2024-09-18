@@ -102,6 +102,7 @@ if len(audio) > 0:
     asr_text = sense_voice.get_asr_text(asr_model, os.path.abspath(audio_path))
     print("User: "+asr_text)
     os.remove(audio_path)
+    print(f"time {datetime.now()}")
 
 # ASR End
 
@@ -120,8 +121,10 @@ if prompt := st.chat_input() or asr_text:
         for r in response:
             reponse_text += r.content
             placeholder.markdown(reponse_text)
+        print(f"time {datetime.now()}")
         # get tts
         with st.spinner('Generating audio...'):
             audio_path = sambert_dashscope.get_tts_audio(reponse_text)
             # audio_path = sambert.get_tts_audio(tts_model, reponse_text)
         st.audio(audio_path, format="audio/wav", loop=False, autoplay=True)
+        print(f"time {datetime.now()}")
