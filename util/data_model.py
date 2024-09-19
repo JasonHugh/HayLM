@@ -1,9 +1,10 @@
-from pydantic import BaseModel, StringConstraints, AllowInfNan
+from pydantic import BaseModel, StringConstraints
 from typing_extensions import Annotated
+from typing import Optional
 
 class User(BaseModel):
     id: int = None
-    name: Annotated[str, StringConstraints(min_length=3, max_length=10)]
+    name: Annotated[str, StringConstraints(min_length=3, max_length=16)]
     phone: Annotated[str, StringConstraints(pattern=r'^1\d{10}$')]
     SN: Annotated[str, StringConstraints(min_length=11, max_length=11)]
     password: str
@@ -53,6 +54,14 @@ class Report(BaseModel):
     start_date: str
     end_date: str
     create_time: str
+
+class SN(BaseModel):
+    id: int = None
+    SN: str = None
+    is_used: bool = False
+    create_time: Optional[str]
+    update_time: Optional[str]
+
 
 if __name__ == "__main__":
     User.model_validate()

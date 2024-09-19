@@ -40,6 +40,9 @@ asr_model = load_asr_model()
 user_audio_dir = user_dir + "/input_audio"
 if not os.path.exists(user_audio_dir):
     os.makedirs(user_audio_dir)
+user_audio_dir = user_dir + "/output_audio"
+if not os.path.exists(user_audio_dir):
+    os.makedirs(user_audio_dir)
 
 with open("secrets/cfg.yaml", "r", encoding='utf-8') as file:
     conf = yaml.safe_load(file)
@@ -59,7 +62,7 @@ app.add_middleware(
 async def index():
     return {"msg": "HayLM"}
 
-@app.post("/user/register")
+@app.post("/register")
 def register(user: User):
     try:
         user = User.model_validate({"name":user.name, "phone":user.phone, "SN":user.SN, "password":pwd_context.hash(user.password)})
@@ -213,12 +216,10 @@ async def get_history(session_id: int, date: str, user: User = Depends(__get_cur
     return {"success": True, "data":{ "history": histories}}
 
 @app.delete("/chat/history/delete")
-async def delete_history(history_id: int, user: User = Depends(__get_current_user)):
-    res = sqlite_tool.delete_history(history_id=history_id)
-    if res:
-        return {"success": True}
-    else:
-        return {"success": False, "message": "delete error"}
+async def delete_history(history_id_list: list[int], user: User = Depends(__get_current_user)):
+    for history_id in history_id_list:
+        sqlite_tool.delete_history(history_id=history_id)
+    return {"success": True}
 
 
 def __get_system_prompt(user_config: UserConfig, session: Session):

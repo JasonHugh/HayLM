@@ -1,5 +1,5 @@
 import sqlite3, os
-from .data_model import User, UserConfig, History, Session
+from .data_model import User, UserConfig, History, Session, SN
 import threading
  
 class SQLiteTool:
@@ -124,7 +124,7 @@ class SQLiteTool:
         self.cursor.execute(query)
         result = self.cursor.fetchone()
         if result:
-            return False, "username exists"
+            return False, "Username exists"
         
         # is SN invalid
         query = f"SELECT id, is_used FROM SN WHERE SN='{user.SN}'"
@@ -228,6 +228,17 @@ class SQLiteTool:
             self.connection.rollback()
             return False
 
+    def get_sn(self) -> list[SN]:
+        query = f"SELECT * FROM SN"
+        self.cursor.execute(query)
+        result = self.cursor.fetchall()
+        if result:
+            SNs = []
+            for r in result:
+                SNs.append(SN(id = r[0], SN = r[1], is_used = r[2], create_time = r[3], update_time = r[4]))
+            return SNs
+        else:
+            return None
 
 
 if __name__ == "__main__":
