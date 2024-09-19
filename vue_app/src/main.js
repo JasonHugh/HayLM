@@ -9,6 +9,7 @@ import ChatHistory from './components/ChatHistory.vue';
 import UserConfig from './components/UserConfig.vue';
 import Login from './components/Login.vue';
 import Chat from './components/Chat.vue';
+import Register from './components/Register.vue';
 
 const routes = [
     {
@@ -30,6 +31,11 @@ const routes = [
         name: 'chat', 
         path: '/chat', 
         component: Chat 
+    },
+    { 
+        name: 'register', 
+        path: '/register', 
+        component: Register 
     },
 ]
 

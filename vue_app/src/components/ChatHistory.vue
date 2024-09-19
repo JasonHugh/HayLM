@@ -8,15 +8,20 @@
   <main>
   <t-pull-down-refresh v-model="refreshing" @refresh="onRefresh" style="overflow-y: scroll;">
     <t-list :async-loading="loading" @scroll="onScroll">
-      <t-swipe-cell v-for="item in listPull">
-        <t-cell :key="item.id" :title="item.role + '&nbsp;&nbsp;&nbsp;' + item.create_time" :description="item.content" align="top">
+    <t-notice-bar visible content="这是一条普通的通知信息" :prefix-icon="false" v-show="isEmpty"/>
+      <t-swipe-cell v-for="(item, index) in listPull" :key="item.id">
+        <t-cell :title="item.role + '&nbsp;&nbsp;&nbsp;' + item.create_time" :description="item.content" align="top" v-if="index % 2 == 0">
             <template #leftIcon>
-                <t-avatar shape="circle" image="https://tdesign.gtimg.com/mobile/demos/avatar1.png" v-show="item.role=='assistant'" />
-                <t-avatar shape="circle" image="https://tdesign.gtimg.com/mobile/demos/avatar4.png" v-show="item.role=='user'" />
+                <t-avatar shape="circle" image="https://tdesign.gtimg.com/mobile/demos/avatar4.png" />
+            </template>
+        </t-cell>
+        <t-cell :title="listPull[index+1].role + '&nbsp;&nbsp;&nbsp;' + listPull[index+1].create_time" :description="listPull[index+1].content" align="top" v-if="index % 2 == 0">
+            <template #leftIcon>
+                <t-avatar shape="circle" image="https://tdesign.gtimg.com/mobile/demos/avatar1.png"/>
             </template>
         </t-cell>
         <template #right>
-          <div class="btn delete-btn" @click="handleDelete(item.id)">删除</div>
+          <div class="btn delete-btn" @click="handleDelete(index, [item.id,listPull[index+1].id])">删除</div>
         </template>
       </t-swipe-cell>
     </t-list>
@@ -68,6 +73,7 @@
                 top: document.getElementsByClassName('t-list')[0].scrollHeight
               })
             })
+            console.log(data.value)
           }else{
             data.value = []
           }
@@ -85,6 +91,13 @@
   const listPull = ref([] as Array<any>);
   const loading = ref('');
   const refreshing = ref(false);
+  const isEmpty = ref(false)
+
+  const listItem = (index) => {
+    console.log(index)
+    console.log(listPull.value.length)
+    return listPull.value[index]
+  }
   
   const onLoadPull = (isRefresh?: Boolean) => {
     if ((listPull.value.length >= MAX_DATA_LEN && !isRefresh) || loading.value) {
@@ -94,6 +107,12 @@
     loadData(listPull, isRefresh).then(() => {
       loading.value = '';
       refreshing.value = false;
+
+      if(listPull.value.length == 0){
+        isEmpty.value = true
+      }else{
+        isEmpty.value = false
+      }
     });
   };
   
@@ -107,16 +126,19 @@
       onLoadPull();
     }
   };
-  const handleDelete = (historyId: number)=>{
+  const handleDelete = (index: number, historyIdList: Array<number>)=>{
+    console.log(historyIdList)
     new Promise((resolve) => {
-      axios.delete(import.meta.env.VITE_API_URL+'/chat/history/delete?history_id='+historyId, {
+      axios.delete(import.meta.env.VITE_API_URL+'/chat/history/delete', {data: historyIdList}, {
         headers: {
           'accept': 'application/json',
+          'Content-Type': 'application/json'
         }
       }).then(response => {
         if(response.data.success){
           console.log("delete success");
-          onLoadPull();
+          // remove from list
+          listPull.value.splice(index,2)
         }else{
           console.error(response.data.message);
         }
@@ -134,6 +156,9 @@
     }else{
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       onLoadPull();
+    }
+    if(listPull.value.length == 0){
+      isEmpty.value = true
     }
   });
   

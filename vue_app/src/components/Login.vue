@@ -64,7 +64,7 @@ const login = (e: any) => {
       router.push({ path: "/" });
     }).catch(error => {
       console.error(error)
-      Toast("用户名或密码错误！");
+      Toast(error);
     });
   }
 };

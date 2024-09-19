@@ -78,6 +78,8 @@ const recording = async () => {
             }).then(response => {
               if(response.data){
                 const audioUrl = URL.createObjectURL(new Blob([response.data]));
+                responseList.value[responseList.value.length-1].audioUrl = audioUrl
+                console.log(responseList.value)
                 playingAudio.value = new Audio(audioUrl);
                 playingAudio.value.play();
               }else{
@@ -107,6 +109,10 @@ const recording = async () => {
     isRecording.value = false;
     theme.value = "primary"
   }else{
+    // init recorder
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    mediaRecorder.value = new MediaRecorder(stream);
+
     audioChunks.value = []
     console.log("start recording")
     mediaRecorder.value.ondataavailable = e => {
@@ -124,9 +130,6 @@ onMounted(async ()=>{
       router.push({ path: "/login" });
   }else{
     axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-    // init recorder
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    mediaRecorder.value = new MediaRecorder(stream);
   }
   
   // scroll to bottom after DOM loading done
