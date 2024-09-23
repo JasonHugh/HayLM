@@ -1,12 +1,11 @@
-from util.db import SQLiteTool
+import sndhdr
+from pydub import AudioSegment
 
-user_dir = "user_data"
+ 
+# 音频文件路径
+audio_file_path = '/home/lighthouse/HayLM/user_data/output_audio/2024-09-20-00-12-38.wav'
+ 
+print(sndhdr.what(audio_file_path))
 
-# sqlite init
-db_dir = user_dir + "/sqlite"
-sqlite_tool = SQLiteTool(db_dir + '/chat.db')
-sqlite_tool.connect()
-for role in sqlite_tool.get_history(user_id=1, session_id=1, date="2024-09-16"):
-    print(role)
-# sqlite_tool.delete_history(history_id=77)
-# print(sqlite_tool.get_user('hay1'))
+audio = AudioSegment.from_file(audio_file_path)
+audio.set_frame_rate(16000).set_sample_width(2).export(audio_file_path, format="wav")

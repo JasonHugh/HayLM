@@ -2,7 +2,7 @@
   <t-navbar title="聊天" :fixed="true"></t-navbar>
   <div ref="scrollRef" class="mainBox">
     <t-list>
-      <t-cell v-for="item in responseList" :key="item" :title="item.role + '&nbsp;&nbsp;&nbsp;' + item.create_time" :description="item.content" align="top">
+      <t-cell v-for="item in responseList" :key="item.id" :title="item.role + '&nbsp;&nbsp;&nbsp;' + item.create_time" :description="item.content" align="top" @click="playAudio">
           <template #leftIcon>
               <t-avatar shape="circle" image="https://tdesign.gtimg.com/mobile/demos/avatar1.png" v-show="item.role=='assistant'" />
               <t-avatar shape="circle" image="https://tdesign.gtimg.com/mobile/demos/avatar4.png" v-show="item.role=='user'" />
@@ -38,6 +38,14 @@ const scrollRef = ref()
 const isLoading = ref(false)
 const playingAudio = ref()
 
+const playAudio = () => {
+  if(playingAudio.value.paused){
+    playingAudio.value.play();
+  }else{
+    playingAudio.value.pause();
+    playingAudio.value.currentTime = 0;
+  }
+}
 
 const recording = async () => {
   if(playingAudio.value){
@@ -50,7 +58,7 @@ const recording = async () => {
     mediaRecorder.value.stop();
     mediaRecorder.value.onstop = () => {
       isLoading.value = true;
-      const audioBlob = new Blob(audioChunks.value, { 'type' : 'audio/wav; codecs=opus' });
+      const audioBlob = new Blob(audioChunks.value, { 'type' : 'audio/wav' });
       // request api
       const formData = new FormData();
       formData.append('wav', audioBlob, 'recording.wav');

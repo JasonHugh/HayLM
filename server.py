@@ -2,7 +2,8 @@ from fastapi import FastAPI, File, UploadFile, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
-from asr.sense_voice import get_asr_text, load_asr_model
+# from asr.sense_voice import get_asr_text, load_asr_model
+from asr.paraformer_dashscope import get_asr_text
 from tts import sambert_dashscope
 import os, yaml, re
 from util import chat
@@ -12,6 +13,7 @@ from passlib.context import CryptContext
 from datetime import datetime, timedelta
 from util.data_model import User, UserConfig, History, Session
 from pydantic import ValidationError
+from pydub import AudioSegment
 
 app = FastAPI()
 
@@ -34,20 +36,20 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
 # asr tts model load
 # tts_model = sambert.load_tts_model()
-asr_model = load_asr_model()
+# asr_model = load_asr_model()
 
 # audio dir init
-user_audio_dir = user_dir + "/input_audio"
-if not os.path.exists(user_audio_dir):
-    os.makedirs(user_audio_dir)
-user_audio_dir = user_dir + "/output_audio"
-if not os.path.exists(user_audio_dir):
-    os.makedirs(user_audio_dir)
+input_audio_dir = user_dir + "/input_audio"
+if not os.path.exists(input_audio_dir):
+    os.makedirs(input_audio_dir)
+output_audio_dir = user_dir + "/output_audio"
+if not os.path.exists(output_audio_dir):
+    os.makedirs(output_audio_dir)
 
 with open("secrets/cfg.yaml", "r", encoding='utf-8') as file:
     conf = yaml.safe_load(file)
 
-OPENAI_MODEL_NAME = "glm-4-0520"
+OPENAI_MODEL_NAME = "glm-4-flash"
 
 
 app.add_middleware(
@@ -81,7 +83,7 @@ def register(user: User):
 
 @app.post("/login")
 async def login(form_data: OAuth2PasswordRequestForm = Depends()):
-    user = __authenticate_user(form_data.username, form_data.password)
+    user: User = __authenticate_user(form_data.username, form_data.password)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -142,11 +144,14 @@ def config(user_config: UserConfig, user: User = Depends(__get_current_user)):
 async def get_response(user: User = Depends(__get_current_user), user_input: str = None, wav: UploadFile = File(None)):
     print(f"start chat {datetime.now()}")
     if wav:
+        print(f"start asr {datetime.now()}")
         # asr
-        input_audio_path = "{}/{}.wav".format(user_audio_dir, datetime.now().strftime("%Y-%m-%d-%H-%M-%S"))
-        with open(input_audio_path, "wb") as f:
-            f.write(wav.file.read())
-        user_input = get_asr_text(asr_model, os.path.abspath(input_audio_path))
+        input_audio_path = "{}/{}.wav".format(input_audio_dir, datetime.now().strftime("%Y-%m-%d-%H-%M-%S"))
+        # save audio with 16k
+        audio = AudioSegment.from_file(wav.file)
+        audio.set_frame_rate(16000).set_sample_width(2).export(input_audio_path, format="wav")
+        print(os.path.abspath(input_audio_path))
+        user_input = get_asr_text(os.path.abspath(input_audio_path))
         os.remove(input_audio_path)
         
     if not user_input:

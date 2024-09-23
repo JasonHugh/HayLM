@@ -96,8 +96,8 @@ class SQLiteTool:
             CREATE_TIME  DATETIME,
             UPDATE_TIME     DATETIME);''')
         # insert test data
-        self.cursor.execute("INSERT INTO SN (SN,IS_USED,CREATE_TIME) VALUES ('HUESDOCFT46', 0 , CURRENT_TIMESTAMP)")
-        self.cursor.execute("INSERT INTO SN (SN,IS_USED,CREATE_TIME) VALUES ('EUTI47CU9K3', 0 , CURRENT_TIMESTAMP)")
+        self.cursor.execute("INSERT INTO SN (SN,IS_USED,CREATE_TIME) VALUES ('HUESDOCFT46', 0 , datetime(CURRENT_TIMESTAMP,'localtime'))")
+        self.cursor.execute("INSERT INTO SN (SN,IS_USED,CREATE_TIME) VALUES ('EUTI47CU9K3', 0 , datetime(CURRENT_TIMESTAMP,'localtime'))")
         print ("SN created")
 
         self.connection.commit()
@@ -110,7 +110,7 @@ class SQLiteTool:
 
     def __add_history(self, user_id, session_id, role, content: str, is_important:bool):
         try:
-            self.cursor.execute("INSERT INTO HISTORY (USER_ID,SESSION_ID,ROLE,CONTENT,IS_IMPORTANT,CREATE_TIME) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)", (user_id,session_id,role,content,is_important))
+            self.cursor.execute("INSERT INTO HISTORY (USER_ID,SESSION_ID,ROLE,CONTENT,IS_IMPORTANT,CREATE_TIME) VALUES (?, ?, ?, ?, ?, datetime(CURRENT_TIMESTAMP,'localtime'))", (user_id,session_id,role,content,is_important))
             self.connection.commit()
             return True, self.cursor.lastrowid
         except Exception as e:
@@ -138,11 +138,11 @@ class SQLiteTool:
         
         try:
             # set SN used
-            query = f"UPDATE SN set is_used=1,UPDATE_TIME=CURRENT_TIMESTAMP WHERE id='{SN_ID}'"
+            query = f"UPDATE SN set is_used=1,UPDATE_TIME=datetime(CURRENT_TIMESTAMP,'localtime') WHERE id='{SN_ID}'"
             self.cursor.execute(query)
 
             # init user
-            query = f"INSERT INTO USER (NAME,PHONE,PASSWORD,SN,CREATE_TIME,UPDATE_TIME) VALUES ('{user.name}', '{user.phone}', '{user.password}','{user.SN}', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
+            query = f"INSERT INTO USER (NAME,PHONE,PASSWORD,SN,CREATE_TIME,UPDATE_TIME) VALUES ('{user.name}', '{user.phone}', '{user.password}','{user.SN}', datetime(CURRENT_TIMESTAMP,'localtime'), datetime(CURRENT_TIMESTAMP,'localtime'))"
             self.cursor.execute(query)
             user_id = self.cursor.lastrowid
             self.connection.commit()
@@ -159,11 +159,11 @@ class SQLiteTool:
         try:
             # set config
             query = f"""INSERT INTO USER_CONFIG (USER_ID, AI_NAME, played_role, CHILD_NAME, CHILD_AGE, child_profile, child_sex, learning, CREATE_TIME, UPDATE_TIME) 
-            VALUES ({user_config.user_id}, '{user_config.ai_name}', '{user_config.played_role}', '{user_config.child_name}', {user_config.child_age}, '{user_config.child_profile}', '{user_config.child_sex}','{user_config.learning}', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"""
+            VALUES ({user_config.user_id}, '{user_config.ai_name}', '{user_config.played_role}', '{user_config.child_name}', {user_config.child_age}, '{user_config.child_profile}', '{user_config.child_sex}','{user_config.learning}', datetime(CURRENT_TIMESTAMP,'localtime'), datetime(CURRENT_TIMESTAMP,'localtime'))"""
             self.cursor.execute(query)
 
             # init session
-            query = f"INSERT INTO SESSION (USER_ID, NAME, summary, IS_ACTIVE, CREATE_TIME, UPDATE_TIME) VALUES ({user_config.user_id}, 'MAIN', '', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
+            query = f"INSERT INTO SESSION (USER_ID, NAME, summary, IS_ACTIVE, CREATE_TIME, UPDATE_TIME) VALUES ({user_config.user_id}, 'MAIN', '', 1, datetime(CURRENT_TIMESTAMP,'localtime'), datetime(CURRENT_TIMESTAMP,'localtime'))"
             self.cursor.execute(query)
             session_id = self.cursor.lastrowid
 

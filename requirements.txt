@@ -1,5 +1,4 @@
 timm==1.0.8 
-openai==1.40.3 
 lmdeploy[all]==0.5.3
 langchain==0.2.13
 langchain-chroma==0.1.2
@@ -8,10 +7,8 @@ langchain-core==0.2.30
 langchain-openai==0.1.21
 langchain-text-splitters==0.2.2
 langchainhub==0.1.21
-PyYaml
 streamlit==1.36.0
 streamlit-keyup==0.2.4
-funasr==1.0.0
 streamlit-audiorecorder==0.0.5
 
 #tts
@@ -19,7 +16,21 @@ sortedcontainers
 simplejson
 
 # server
+funasr==1.1.6
+PyYaml
 python-jose[cryptography]
 passlib
 fastapi 
 uvicorn
+torch 
+torchvision 
+torchaudio
+dashscope
+openai
+python-multipart
+modelscope
+addict
+datasets==2.21.0
+simplejson
+sortedcontainers
+
