@@ -9,8 +9,19 @@
           </template>
       </t-cell>
     </t-list>
-    <t-loading theme="dots" size="40px" style="width: 100px;height: 100px;position: fixed;bottom: 180px;left: 50%;margin-left: -20px;" v-show="isLoading" />
-    <t-button :theme="theme" :disabled="isLoading" size="large" :icon="chatIcon" shape="circle" @click="recording" style="width: 100px;height: 100px;position: fixed;bottom: 80px;left: 50%;margin-left: -50px;"></t-button>
+    <t-loading theme="dots" size="40px" style="height: 100px;position: fixed;bottom: 130px;left: 50%;margin-left: -20px;" v-show="isLoading" />
+    <t-row style="height: 100px;position: fixed;bottom: 50px;padding: 0 10px;">
+      <t-col span="4" style="width: 80px;height: 80px;">
+        <t-button :theme="theme" :disabled="isLoading" size="large" :icon="chatIcon" shape="circle" @click="recording" style="width: 80px;height: 80px;"></t-button>
+      </t-col>
+      <t-col span="12" style="width: calc(100vw - 120px);margin-left: 10px;margin-top: 13px;">
+        <t-input v-model="chatInput" placeholder="请输入内容" borderless style="border: 1px solid rgba(220, 220, 220, 1);border-radius: 6px;padding: 10px;">
+          <template #suffix>
+            <t-button theme="primary" size="small" @click="send" :disabled="isLoading"> 发送 </t-button>
+          </template>
+        </t-input>
+      </t-col>
+    </t-row>
   </div>
 </template>
 
@@ -37,6 +48,7 @@ const responseList = ref([]);
 const scrollRef = ref()
 const isLoading = ref(false)
 const playingAudio = ref()
+const chatInput = ref("")
 
 const playAudio = () => {
   if(playingAudio.value.paused){
@@ -46,7 +58,63 @@ const playAudio = () => {
     playingAudio.value.currentTime = 0;
   }
 }
+const send = () => {
+  if(playingAudio.value){
+    console.log("stop audio")
+    playingAudio.value.pause();
+  }
+  isLoading.value = true;
+  new Promise((resolve) => {
+    axios.post(encodeURI(import.meta.env.VITE_API_URL+'/chat/response?user_input='+chatInput.value), {
+      headers: {
+        'accept': 'application/json',
+        'Content-Type': 'multipart/form-data'
+      }
+    }).then(response => {
+      chatInput.value = ""
+      if(response.data.success){
+        responseList.value.push(...response.data.data.histories) 
+        
+        // scroll to bottom after DOM loading done
+        nextTick(()=>{
+          scrollRef.value.scrollTo({
+            top: document.getElementsByClassName('t-list')[0].scrollHeight
+          })
+        })
 
+        // play audio
+        axios.get(import.meta.env.VITE_API_URL+'/chat/audio?audio_path='+response.data.data.audio_path, {
+          'responseType': 'blob'
+        }).then(response => {
+          if(response.data){
+            const audioUrl = URL.createObjectURL(new Blob([response.data]));
+            playingAudio.value = new Audio(audioUrl);
+            playingAudio.value.play();
+          }else{
+            console.error(response.data);
+            Toast("网络错误")
+          }
+        })
+        .catch(error => {
+          console.error(error);
+          Toast(error)
+          isLoading.value = false;
+        }).then(() => {
+          isLoading.value = false;
+        });
+      }else{
+        console.error(response.data.message);
+        Toast(response.data.message);
+        isLoading.value = false;
+      }
+    })
+    .catch(error => {
+      console.error(error);
+      Toast(error)
+    });
+    resolve(responseList);
+  });
+}
 const recording = async () => {
   if(playingAudio.value){
     console.log("stop audio")
@@ -55,6 +123,7 @@ const recording = async () => {
   if(isRecording.value){
     console.log("stop recording")
     isRecording.value = false
+    theme.value = "primary"
     mediaRecorder.value.stop();
     mediaRecorder.value.onstop = () => {
       isLoading.value = true;
@@ -86,36 +155,34 @@ const recording = async () => {
             }).then(response => {
               if(response.data){
                 const audioUrl = URL.createObjectURL(new Blob([response.data]));
-                responseList.value[responseList.value.length-1].audioUrl = audioUrl
-                console.log(responseList.value)
                 playingAudio.value = new Audio(audioUrl);
                 playingAudio.value.play();
               }else{
                 console.error(response.data);
-                Toast("网络错误")
+                Toast(response.data);
               }
             })
             .catch(error => {
               console.error(error);
-              Toast("网络错误")
+              Toast(error)
+              isLoading.value = false;
             }).then(() => {
               isLoading.value = false;
             });
           }else{
             console.error(response.data.message);
-            Toast("没有检测到声音输入");
+            Toast(response.data.message);
             isLoading.value = false;
           }
         })
         .catch(error => {
           console.error(error);
-          Toast("网络错误")
+          Toast(error)
+          isLoading.value = false;
         });
         resolve(responseList);
       });
     };
-    isRecording.value = false;
-    theme.value = "primary"
   }else{
     // init recorder
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });

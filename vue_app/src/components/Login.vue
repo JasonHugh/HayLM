@@ -1,6 +1,5 @@
 <template>
-  <t-navbar title="登录" :fixed="true">
-  </t-navbar>
+  <t-navbar title="登录" :fixed="true"></t-navbar>
   <main>
     <t-form
       ref="form"

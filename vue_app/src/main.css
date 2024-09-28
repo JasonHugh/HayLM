@@ -7,8 +7,8 @@ body, #app{
 }
 main{
   top:48px;
-  padding-bottom: 56px;
+  padding-bottom: 48px;
   position: relative;
-  height: calc(100vh - 48px - 56px);
+  height: calc(100vh - 48px - 60px);
   overflow-y: scroll;
 }
