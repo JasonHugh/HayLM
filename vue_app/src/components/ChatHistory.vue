@@ -10,18 +10,20 @@
     <t-list :async-loading="loading" @scroll="onScroll">
     <t-notice-bar visible content="这是一条普通的通知信息" :prefix-icon="false" v-show="isEmpty"/>
       <t-swipe-cell v-for="(item, index) in listPull" :key="item.id">
-        <t-cell :title="item.role + '&nbsp;&nbsp;&nbsp;' + item.create_time" :description="item.content" align="top" v-if="index % 2 == 0">
-            <template #leftIcon>
-                <t-avatar shape="circle" image="https://tdesign.gtimg.com/mobile/demos/avatar4.png" />
-            </template>
-        </t-cell>
-        <t-cell :title="listPull[index+1].role + '&nbsp;&nbsp;&nbsp;' + listPull[index+1].create_time" :description="listPull[index+1].content" align="top" v-if="index % 2 == 0">
-            <template #leftIcon>
-                <t-avatar shape="circle" image="https://tdesign.gtimg.com/mobile/demos/avatar1.png"/>
-            </template>
-        </t-cell>
+        <div v-if="item.role=='user'">
+          <t-cell :title="item.role + '&nbsp;&nbsp;&nbsp;' + item.create_time" :description="item.content" align="top">
+              <template #leftIcon>
+                  <t-avatar shape="circle" image="https://tdesign.gtimg.com/mobile/demos/avatar4.png" />
+              </template>
+          </t-cell>
+          <t-cell :title="listPull[index+1].role + '&nbsp;&nbsp;&nbsp;' + listPull[index+1].create_time" :description="listPull[index+1].content" align="top" v-if="listPull[index+1]!=null">
+              <template #leftIcon>
+                  <t-avatar shape="circle" image="https://tdesign.gtimg.com/mobile/demos/avatar1.png"/>
+              </template>
+          </t-cell>
+        </div>
         <template #right>
-          <div class="btn delete-btn" @click="handleDelete(index, [item.id,listPull[index+1].id])">删除</div>
+          <div class="btn delete-btn" @click="handleDelete(index, item.id)">删除</div>
         </template>
       </t-swipe-cell>
     </t-list>
@@ -126,15 +128,15 @@
       onLoadPull();
     }
   };
-  const handleDelete = (index: number, historyIdList: Array<number>)=>{
+  const handleDelete = (index: number, id: number)=>{
+    let historyIdList = []
+    historyIdList.push(id)
+    if(listPull[index+1]!=null){
+      historyIdList.push(listPull[index+1].id)
+    }
     console.log(historyIdList)
     new Promise((resolve) => {
-      axios.delete(import.meta.env.VITE_API_URL+'/chat/history/delete', {data: historyIdList}, {
-        headers: {
-          'accept': 'application/json',
-          'Content-Type': 'application/json'
-        }
-      }).then(response => {
+      axios.delete(import.meta.env.VITE_API_URL+'/chat/history/delete', {data: historyIdList}).then(response => {
         if(response.data.success){
           console.log("delete success");
           // remove from list
