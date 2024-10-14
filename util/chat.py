@@ -14,16 +14,15 @@ client = OpenAI(
     base_url=OPENAI_BASE_URL,
 )
 
-def get_streaming_response(messages):
+def get_streaming_response(messages, model_name = OPENAI_MODEL_NAME):
     completion = client.chat.completions.create(
-        model=OPENAI_MODEL_NAME,
+        model=model_name,
         messages=messages,
         stream=True,
         temperature=0.8
     )
-    # for chunk in completion:
-    #     print(chunk.choices[0].delta.content, end="")
-    return completion
+    for chunk in completion:
+        yield chunk.choices[0].delta.content
 
 def get_response(messages, model_name = OPENAI_MODEL_NAME):
     completion = client.chat.completions.create(
@@ -35,15 +34,10 @@ def get_response(messages, model_name = OPENAI_MODEL_NAME):
     return completion.choices[0].message.content
 
 if __name__ == "__main__":
-    get_response([
+    for text in get_streaming_response([
         {
     "role":"user",
         "content":"你好"
-        },{
-    "role":"assistant",
-        "content":"你好！有什么我可以帮助你的吗？"
-        },{
-    "role":"user",
-        "content":"教我做披萨"
         }
-    ])
+    ]):
+        print(text)

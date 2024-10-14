@@ -11,10 +11,6 @@ streamlit==1.36.0
 streamlit-keyup==0.2.4
 streamlit-audiorecorder==0.0.5
 
-#tts
-sortedcontainers
-simplejson
-
 # server
 funasr==1.1.6
 PyYaml
@@ -22,6 +18,8 @@ python-jose[cryptography]
 passlib
 fastapi 
 uvicorn
+SQLAlchemy
+
 torch 
 torchvision 
 torchaudio
@@ -33,4 +31,3 @@ addict
 datasets==2.21.0
 simplejson
 sortedcontainers
-

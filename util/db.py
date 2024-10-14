@@ -1,5 +1,7 @@
 import sqlite3, os
-from .data_model import User, UserConfig, History, Session, SN
+
+from db.models import History
+from .data_model import User, UserConfig, Session, SN, AIRole
 import threading
  
 class SQLiteTool:
@@ -44,7 +46,9 @@ class SQLiteTool:
             (ID             INTEGER PRIMARY KEY AUTOINCREMENT,
             USER_ID         INTEGER,
             AI_NAME         TEXT,
-            PLAYED_ROLE     TEXT,
+            AI_ROLE         TEXT,
+            AI_PROFILE      TEXT,
+            STYLED_ROLE_ID  INTEGER,
             CHILD_NAME      TEXT,
             CHILD_SEX       TEXT,
             CHILD_AGE       TEXT,
@@ -52,6 +56,8 @@ class SQLiteTool:
             LEARNING        TEXT,
             CREATE_TIME     DATETIME,
             UPDATE_TIME     DATETIME);''')
+        # # insert test data
+        self.cursor.execute("INSERT INTO USER_CONFIG (USER_ID, AI_NAME,AI_ROLE,AI_PROFILE,STYLED_ROLE_ID,CHILD_NAME,CHILD_SEX,CHILD_AGE,CHILD_PROFILE,LEARNING,CREATE_TIME,UPDATE_TIME) VALUES (1, '悟空', '西游记里的孙悟空','孙悟空（又称美猴王、齐天大圣、孙行者、斗战胜佛），是中国古典神魔小说《西游记》中的人物。由开天辟地产生的仙石孕育而生，出生地位于东胜神洲的花果山上，因带领猴群进入水帘洞而被尊为“美猴王”。 为了学艺而漂洋过海拜师于须菩提祖师，得名“孙悟空”， 学会大品天仙诀、七十二变 、筋斗云等高超的法术。', null, '奇大哥', 'boy', '3', '奇大哥是一个3岁的小男孩，性格有点内向', '', datetime(CURRENT_TIMESTAMP,'localtime'), datetime(CURRENT_TIMESTAMP,'localtime'))")
         print ("USER_CONFIG created")
 
         # every week, auto job will generate a summary for all history
@@ -88,6 +94,21 @@ class SQLiteTool:
             CREATE_TIME  DATETIME);''')
         print ("SUMMARY created")
 
+
+        self.cursor.execute('''CREATE TABLE IF NOT EXISTS AI_ROLE
+            (ID          INTEGER PRIMARY KEY AUTOINCREMENT,
+            AI_NAME      TEXT,
+            ROLE_NAME    TEXT,
+            CONTEXT      TEXT,
+            PROFILE      TEXT,
+            TIMBRE       TEXT,
+            TTS_MODEL    TEXT,
+            CREATE_TIME  DATETIME,
+            UPDATE_TIME  DATETIME);''')
+        # insert test data
+        self.cursor.execute("INSERT INTO AI_ROLE (AI_NAME,ROLE_NAME,CONTEXT,PROFILE,TIMBRE,TTS_MODEL,CREATE_TIME,UPDATE_TIME) VALUES ('胡迪', '胡迪', '《玩具总动员》', '胡迪是玩具总动员系列电影中的一个怀旧的缝线牛仔玩偶，也是一名牛仔警长。他是安迪（Andy）自小最喜欢的玩具，在安迪（Andy）的床上有一块领地，而且是众玩具之首领。直到巴斯光年的到来。巴斯光年是一次Andy生日会得到的新玩具，当安迪（Andy）得到巴斯的时候，高兴得把其他玩具都扔在一边，但是巴斯却是胡迪一直以来最大的威胁。然而，经过了风风雨雨之后，胡迪和巴斯却建立了深厚的友情，并成为一辈子的好朋友。','sambert-zhiying-v1','sambert', datetime(CURRENT_TIMESTAMP,'localtime'), datetime(CURRENT_TIMESTAMP,'localtime') )")
+        self.cursor.execute("INSERT INTO AI_ROLE (AI_NAME,ROLE_NAME,CONTEXT,PROFILE,TIMBRE,TTS_MODEL,CREATE_TIME,UPDATE_TIME) VALUES ('艾莎', '艾莎公主', '《冰雪奇缘》', '艾莎公主，阿伦黛尔王国的大公主。艾莎外表高贵优雅、冷若冰霜、拒人千里，但她其实一直生活在恐惧里，努力隐藏着一个天大秘密，内心与强大的秘密搏斗——她天生具有呼风唤雪的神奇魔力，这种能力很美、但也极度危险。因为小时候她的魔法差点害死妹妹安娜，从此艾莎封闭了内心将自己隔离，时刻都在努力压制与日俱增的魔力。登基大典上的意外导致她的魔法失去控制，使得王国被冰天雪地所覆盖。她害怕自己的魔法会再次失控，于是逃进了雪山，并用魔法制造了一座城堡','sambert-zhiyuan-v1','sambert' , datetime(CURRENT_TIMESTAMP,'localtime'), datetime(CURRENT_TIMESTAMP,'localtime') )")
+        print ("AI_ROLE created")
 
         self.cursor.execute('''CREATE TABLE IF NOT EXISTS SN
             (ID          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -158,9 +179,9 @@ class SQLiteTool:
         ):
         try:
             # set config
-            query = f"""INSERT INTO USER_CONFIG (USER_ID, AI_NAME, played_role, CHILD_NAME, CHILD_AGE, child_profile, child_sex, learning, CREATE_TIME, UPDATE_TIME) 
-            VALUES ({user_config.user_id}, '{user_config.ai_name}', '{user_config.played_role}', '{user_config.child_name}', {user_config.child_age}, '{user_config.child_profile}', '{user_config.child_sex}','{user_config.learning}', datetime(CURRENT_TIMESTAMP,'localtime'), datetime(CURRENT_TIMESTAMP,'localtime'))"""
-            self.cursor.execute(query)
+            query = f"""INSERT INTO USER_CONFIG (USER_ID, AI_NAME, AI_ROLE,AI_PROFILE,STYLED_ROLE_ID, CHILD_NAME, CHILD_AGE, child_profile, child_sex, learning, CREATE_TIME, UPDATE_TIME) 
+            VALUES (?,?,?,?,?,?,?,?,?,?, datetime(CURRENT_TIMESTAMP,'localtime'), datetime(CURRENT_TIMESTAMP,'localtime'))"""
+            self.cursor.execute(query, (user_config.user_id,user_config.ai_name,user_config.ai_role,user_config.ai_profile,user_config.styled_role_id,user_config.child_name,user_config.child_age,user_config.child_profile,user_config.child_sex,user_config.learning))
 
             # init session
             query = f"INSERT INTO SESSION (USER_ID, NAME, summary, IS_ACTIVE, CREATE_TIME, UPDATE_TIME) VALUES ({user_config.user_id}, 'MAIN', '', 1, datetime(CURRENT_TIMESTAMP,'localtime'), datetime(CURRENT_TIMESTAMP,'localtime'))"
@@ -184,11 +205,11 @@ class SQLiteTool:
             return None
         
     def get_user_config(self, user_id) -> UserConfig:
-        query = f"SELECT ID, USER_ID, AI_NAME, played_role, CHILD_NAME, CHILD_AGE, child_profile, child_sex, learning, CREATE_TIME, UPDATE_TIME from USER_CONFIG WHERE user_id={user_id}"
+        query = f"SELECT * from USER_CONFIG WHERE user_id={user_id}"
         self.cursor.execute(query)
         result = self.cursor.fetchone()
         if result:
-            return UserConfig(id = result[0], user_id = result[1], ai_name = result[2], played_role = result[3], child_name = result[4], child_age = result[5], child_profile = result[6], child_sex = result[7], learning = result[8], create_time = result[9], update_time = result[10])
+            return UserConfig(id = result[0], user_id = result[1], ai_name = result[2], ai_role = result[3], ai_profile=result[4], styled_role_id = result[5], child_name = result[6], child_sex = result[7], child_age = result[8], child_profile = result[9], learning = result[10], create_time = result[11], update_time = result[12])
         else:
             return None
     

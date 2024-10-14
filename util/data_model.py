@@ -13,17 +13,19 @@ class User(BaseModel):
 
 
 class UserConfig(BaseModel):
-    id: int = None
-    user_id: int = None
-    ai_name: Annotated[str, StringConstraints(min_length=0, max_length=255)]
-    played_role: Annotated[str, StringConstraints(min_length=0, max_length=255)]
+    id: int = Optional[int]
+    user_id: Optional[int]
+    ai_name: Annotated[Optional[str], StringConstraints(min_length=0, max_length=255)]
+    ai_role: Annotated[Optional[str], StringConstraints(min_length=0, max_length=255)]
+    ai_profile: Annotated[Optional[str], StringConstraints(min_length=0, max_length=900)]
+    styled_role_id: Optional[int]
     child_name: Annotated[str, StringConstraints(min_length=0, max_length=255)]
     child_sex: Annotated[str, StringConstraints(pattern=r'boy|girl')]
     child_age: int
-    child_profile: str = None
-    learning: str = None
-    create_time: str = None
-    update_time: str = None
+    child_profile: Annotated[Optional[str], StringConstraints(min_length=0, max_length=900)]
+    learning: Annotated[Optional[str], StringConstraints(min_length=0, max_length=900)]
+    create_time: Optional[str]
+    update_time: Optional[str]
 
 class Session(BaseModel):
     id: int = None
@@ -61,6 +63,18 @@ class SN(BaseModel):
     is_used: bool = False
     create_time: Optional[str]
     update_time: Optional[str]
+
+
+class AIRole(BaseModel):
+    id: Optional[int]
+    ai_name: str
+    role_name: str
+    context: str
+    profile: str
+    timbre: str
+    tts_model: str
+    create_time: str
+    update_time: str
 
 
 if __name__ == "__main__":
