@@ -75,7 +75,7 @@ class UserConfigRepository:
 
 class AIRoleRepository:
     @staticmethod
-    def find_all(db: Session) -> list:
+    def find_all(db: Session) -> list[AIRole]:
         return db.query(AIRole).all()
 
     @staticmethod
@@ -137,4 +137,64 @@ class HistoryRepository:
         history = db.query(History).filter(History.id == id).first()
         if history is not None:
             db.delete(history)
+            db.commit()
+
+class SNRepository:
+    @staticmethod
+    def find_all(db: Session) -> list:
+        return db.query(SN).all()
+
+    @staticmethod
+    def save(db: Session, sn: SN) -> History:
+        if sn.id:
+            sn.update_time = get_current_time()
+            db.merge(sn)
+        else:
+            sn.create_time = get_current_time()
+            sn.update_time = get_current_time()
+            db.add(sn)
+        db.commit()
+        return sn
+
+    @staticmethod
+    def find_by_id(db: Session, id: int) -> SN:
+        return db.query(SN).filter(SN.id == id).first()
+
+    @staticmethod
+    def find_by_sn(db: Session, sn: str) -> bool:
+        return db.query(SN).filter(SN.sn == sn).first()
+
+    @staticmethod
+    def delete_by_id(db: Session, id: int) -> None:
+        sn = db.query(SN).filter(SN.id == id).first()
+        if sn is not None:
+            db.delete(sn)
+            db.commit()
+
+class UserSessionRepository:
+    @staticmethod
+    def find_all(db: Session) -> list:
+        return db.query(UserSession).all()
+
+    @staticmethod
+    def save(db: Session, us: UserSession) -> History:
+        if us.id:
+            us.update_time = get_current_time()
+            db.merge(us)
+        else:
+            us.create_time = get_current_time()
+            us.update_time = get_current_time()
+            db.add(us)
+        db.commit()
+        return us
+
+    @staticmethod
+    def find_by_id(db: Session, id: int) -> UserSession:
+        return db.query(UserSession).filter(UserSession.id == id).first()
+
+    @staticmethod
+    def delete_by_id(db: Session, id: int) -> None:
+        us = db.query(UserSession).filter(UserSession.id == id).first()
+        if us is not None:
+            db.delete(us)
             db.commit()

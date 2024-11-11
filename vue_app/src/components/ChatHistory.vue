@@ -85,6 +85,9 @@
       })
       .catch(error => {
         console.error('There was an error!', error);
+        if(error.response.status == 401){
+          router.push({ path: "/login" });
+        }
       });
       resolve(data);
     });
@@ -152,6 +155,7 @@
   }
   
   onMounted(() => {
+    // localStorage.removeItem('token');
     const token = localStorage.getItem('token');
     if(token == null){
         router.push({ path: "/login" });

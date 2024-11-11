@@ -6,8 +6,8 @@ class User(Base):
 
     id: int = Column(Integer, primary_key=True, index=True, autoincrement=True)
     name: str = Column(String(255), nullable=False, unique=True)
-    phone: str = Column(String(255), nullable=False, unique=True)
-    SN: str = Column(String(255), nullable=False, unique=True)
+    phone: str = Column(String(11), nullable=False, unique=True)
+    SN: str = Column(String(11), nullable=False, unique=True)
     password: str = Column(String(255), nullable=False)
     create_time: str = Column(String(255), nullable=False)
     update_time: str = Column(String(255), nullable=False)
@@ -26,6 +26,18 @@ class UserConfig(Base):
     child_age: int = Column(Integer)
     child_profile: str = Column(String(1000), nullable=False)
     learning: str = Column(String(1000), nullable=False)
+    create_time: str = Column(String(255), nullable=False)
+    update_time: str = Column(String(255), nullable=False)
+
+
+class UserSession(Base):
+    __tablename__ = "SESSION"
+
+    id: int = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    user_id: int = Column(Integer)
+    name: str = Column(String(255), nullable=False)
+    summary: str = Column(String, nullable=False)
+    is_active: bool = Column(Boolean, nullable=False)
     create_time: str = Column(String(255), nullable=False)
     update_time: str = Column(String(255), nullable=False)
 
@@ -55,3 +67,12 @@ class History(Base):
     content: str = Column(String, nullable=False)
     is_important: bool = Column(Boolean, nullable=False)
     create_time: str = Column(String(255), nullable=False)
+
+class SN(Base):
+    __tablename__ = "SN"
+
+    id: int = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    sn: str = Column(String(11), nullable=False)
+    is_used: bool = Column(Boolean, nullable=False)
+    create_time: str = Column(String(255), nullable=False)
+    update_time: str = Column(String(255), nullable=False)

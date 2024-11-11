@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 # from asr.sense_voice import get_asr_text, load_asr_model
 from asr.paraformer_dashscope import get_asr_text
 from tts import sambert_dashscope
-import os, yaml, re, json, time
+import os, yaml, re, json, time, emoji
 from util import chat
 from util.db import SQLiteTool
 from jose import JWTError, jwt
@@ -16,6 +16,7 @@ from pydantic import ValidationError
 from pydub import AudioSegment
 from service.user_service import UserService
 from service.content_service import ContentService
+from db.repositories import UserConfigRepository
 from db.models import AIRole, History
 from util.schemas import *
 
@@ -69,21 +70,16 @@ async def index():
     return {"msg": "HayLM"}
 
 @app.post("/register")
-def register(user: User):
-    try:
-        user = User.model_validate({"name":user.name, "phone":user.phone, "SN":user.SN, "password":pwd_context.hash(user.password)})
-    except ValidationError as e:
-        return {"success": False, "message": e.json()}
+def register(userRequest: UserRequest):
+    success, user = UserService().register(userRequest)
+    if not success:
+        return {"success": False, "message": user}
     
-    success, result = sqlite_tool.add_user(user) 
-    if success:
-        # generate jwt token
-        access_token = __create_access_token(
-            data={"user_id":result,"name":user.name,"SN":user.SN}, expires_delta=timedelta(days=JWT_EXPIRE_DAYS)
-        )
-        return {"success": True, "access_token": access_token}
-    else:
-        return {"success": False, "message": result}
+    # generate jwt token
+    access_token = __create_access_token(
+        data={"user_id":user.id,"name":user.name,"SN":user.SN}, expires_delta=timedelta(days=JWT_EXPIRE_DAYS)
+    )
+    return {"success": True, "access_token": access_token}
 
 @app.post("/login")
 async def login(form_data: OAuth2PasswordRequestForm = Depends()):
@@ -159,9 +155,9 @@ async def get_response(user_input: str, user: User = Depends(__get_current_user)
     print("User: "+user_input)
     print(f"time {datetime.now()}")
 
-    userConfig = sqlite_tool.get_user_config(user.id)
+    userService = UserService()
+    userConfig = userService.get_user_config(user.id)
     if userConfig.styled_role_id:
-        userService = UserService()
         ai_role = userService.get_ai_role(userConfig.styled_role_id)
         userConfig.ai_name = ai_role.ai_name
         userConfig.ai_role = ai_role.context + "里的" + ai_role.role_name
@@ -183,27 +179,27 @@ async def get_response(user_input: str, user: User = Depends(__get_current_user)
     print(messages)
     print(f"time {datetime.now()}")
     # get response from llm
-    response_texts = chat.get_streaming_response(messages, OPENAI_MODEL_NAME)
+    responses = chat.get_streaming_response(messages, OPENAI_MODEL_NAME)
     
 
-    return StreamingResponse(generateLLMResponse(response_texts=response_texts,ai_role=ai_role,user=user,session=session,user_history=user_history), media_type="text/event-stream")
+    return StreamingResponse(generateLLMResponse(responses=responses,ai_role=ai_role,user=user,session=session,user_history=user_history), media_type="text/event-stream")
 
-def generateLLMResponse(response_texts: list[str], ai_role: AIRole, user: User, session: Session, user_history: History):
+def generateLLMResponse(responses: list, ai_role: AIRole, user: User, session: Session, user_history: History):
     response_time = ""
     total_response_text = ""
     output_audio_paths = []
     sentence = ""
     delimiter = "[,，.。?？!！？?]"
     first = True
-    for response_text in response_texts:
-        print("字符："+response_text)
-        sentence += response_text
-        total_response_text += response_text
+    for response in responses:
+        print("字符："+response["text"])
+        sentence += response["text"]
+        total_response_text += response["text"]
         if first:
             first = False
             response_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             yield "event: start\ndata: " + json.dumps({"role":"user", "content":user_history.content, "create_time":user_history.create_time}) + "\n\n"
-        elif re.match(delimiter, response_text):
+        elif not response["isStop"] and re.match(delimiter, response["text"]):
             print("AI: "+sentence)
 
             output_audio_path = ""
@@ -223,7 +219,7 @@ def generateLLMResponse(response_texts: list[str], ai_role: AIRole, user: User, 
             }) + "\n\n"
             
             sentence = ""
-        elif not response_text:
+        elif response["isStop"]:
             print(f"end chat {datetime.now()}")
             # add history
             contentService = ContentService()

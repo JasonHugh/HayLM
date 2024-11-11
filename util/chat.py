@@ -22,7 +22,7 @@ def get_streaming_response(messages, model_name = OPENAI_MODEL_NAME):
         temperature=0.8
     )
     for chunk in completion:
-        yield chunk.choices[0].delta.content
+        yield {"isStop":chunk.choices[0].finish_reason=="stop", "text": chunk.choices[0].delta.content}
 
 def get_response(messages, model_name = OPENAI_MODEL_NAME):
     completion = client.chat.completions.create(
@@ -34,10 +34,10 @@ def get_response(messages, model_name = OPENAI_MODEL_NAME):
     return completion.choices[0].message.content
 
 if __name__ == "__main__":
-    for text in get_streaming_response([
+    for res in get_streaming_response([
         {
     "role":"user",
-        "content":"你好"
+        "content":"你好,最后加上表情回复我"
         }
     ]):
-        print(text)
+        print(res["isStop"], res["text"])

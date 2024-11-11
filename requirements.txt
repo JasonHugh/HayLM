@@ -13,16 +13,17 @@ streamlit-audiorecorder==0.0.5
 
 # server
 funasr==1.1.6
-PyYaml
-python-jose[cryptography]
-passlib
-fastapi 
-uvicorn
-SQLAlchemy
-
 torch 
 torchvision 
 torchaudio
+
+PyYaml
+python-jose[cryptography]
+passlib
+bcrypt
+fastapi 
+uvicorn
+SQLAlchemy
 dashscope
 openai
 python-multipart
@@ -31,3 +32,4 @@ addict
 datasets==2.21.0
 simplejson
 sortedcontainers
+pydub

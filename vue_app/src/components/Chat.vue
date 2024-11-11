@@ -137,7 +137,7 @@ const send = () => {
     eventSource.close()
 
     responseList.value[responseList.value.length-1] = JSON.parse(e.data)
-
+    chatInput.value = ""
     isLoading.value = false;
   })
   eventSource.onerror = (e) => {

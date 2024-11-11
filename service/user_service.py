@@ -1,6 +1,7 @@
 from db.repositories import *
 from util.schemas import *
 from db.database import DatabaseUtil
+from passlib.context import CryptContext
 
 class UserService:
     def __init__(self):
@@ -12,6 +13,31 @@ class UserService:
     def register(self, userRequest: UserRequest):
         if UserRepository.exists_by_name(self.db, userRequest.name):
             return False, "Username exists"
+        
+        # is SN invalid
+        sn: SN = SNRepository.find_by_sn(self.db, userRequest.SN)
+        if not sn or sn.is_used:
+            return False, "Invalid SN"
+        
+        # init user
+        pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+        user = User(name = userRequest.name, phone = userRequest.phone, SN = userRequest.SN, password = pwd_context.hash(userRequest.password))
+        user = UserRepository.save(self.db, user)
+
+        # init session
+        session = UserSession(name = "MAIN", user_id = user.id, summary = "", is_active = True)
+        UserSessionRepository.save(self.db, session)
+
+        # init user config
+        user_config = UserConfig(user_id = user.id, ai_name = "", ai_role = "", ai_profile = "", styled_role_id = 1, child_name = "", child_age = 3, child_profile = "", child_sex = "boy", learning = "")
+        UserConfigRepository.save(self.db, user_config)
+
+        # sn used
+        sn.is_used = True
+        SNRepository.save(self.db, sn)
+
+        return True, user
+        
         
     def find_all_airoles(self):
         return AIRoleRepository.find_all(self.db)

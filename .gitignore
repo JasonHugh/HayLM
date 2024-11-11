@@ -4,3 +4,4 @@ audio
 .ipynb_checkpoints/
 chat_history/
 user_data/
+env/

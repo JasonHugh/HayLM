@@ -8,7 +8,7 @@ class UserBase(BaseModel):
     SN: Annotated[str, StringConstraints(min_length=11, max_length=11)]
     
 class UserRequest(UserBase):
-    password: Optional[str]
+    password: Annotated[Optional[str], StringConstraints(min_length=6)]
 
 class UserResponse(UserBase):
     id: int
