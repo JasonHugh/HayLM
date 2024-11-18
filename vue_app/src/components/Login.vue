@@ -53,7 +53,7 @@ const register = () => {
 
 const login = (e: any) => {
   if(e.validateResult === true){
-    axios.post(import.meta.env.VITE_API_URL+'/login', {grant_type:'password',username: formData.username,password: formData.password,client_id:'',client_secret:''}, {
+    axios.post(import.meta.env.VITE_API_URL+'/api/login', {grant_type:'password',username: formData.username,password: formData.password,client_id:'',client_secret:''}, {
       headers: {
         'accept': 'application/json',
         'Content-Type': 'application/x-www-form-urlencoded'

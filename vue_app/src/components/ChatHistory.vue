@@ -57,7 +57,7 @@
   }
   const loadData = (data: any, isRefresh?: Boolean) => {
     return new Promise((resolve) => {
-      axios.get(import.meta.env.VITE_API_URL+'/chat/history?session_id='+sessionId+'&date='+getDateString(selectDate.value), {
+      axios.get(import.meta.env.VITE_API_URL+'/api/chat/history?session_id='+sessionId+'&date='+getDateString(selectDate.value), {
         headers: {
           'accept': 'application/json',
         }
@@ -139,7 +139,7 @@
     }
     console.log(historyIdList)
     new Promise((resolve) => {
-      axios.delete(import.meta.env.VITE_API_URL+'/chat/history/delete', {data: historyIdList}).then(response => {
+      axios.delete(import.meta.env.VITE_API_URL+'/api/chat/history/delete', {data: historyIdList}).then(response => {
         if(response.data.success){
           console.log("delete success");
           // remove from list

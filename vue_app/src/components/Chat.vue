@@ -191,7 +191,7 @@ const stopRecording = async () => {
     const formData = new FormData();
     formData.append('wav', audioBlob, 'recording.wav');
     new Promise((resolve) => {
-      axios.post(API_URL+'/asr', formData, {
+      axios.post(API_URL+'/api/asr', formData, {
         headers: {
           'accept': 'application/json',
           'Content-Type': 'multipart/form-data'
