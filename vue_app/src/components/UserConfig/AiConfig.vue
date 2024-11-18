@@ -43,8 +43,8 @@
           label-align="left"
           :disabled="false"
           scroll-to-first-error="auto"
-          @reset="onReset"
-          @submit="onSubmit"
+          @reset="onResetCustom"
+          @submit="onSubmitCustom"
         >
           <t-form-item label="AI名称" name="ai_name" help="输入你对AI的称呼，例如：悟空">
             <t-input v-model="formData.ai_name" borderless placeholder="请输入内容"></t-input>
@@ -52,38 +52,43 @@
           <t-form-item label="AI角色" name="ai_role" help="输入希望AI扮演的角色，例如：《西游记》里的孙悟空">
             <t-input v-model="formData.ai_role" borderless placeholder="请输入内容"></t-input>
           </t-form-item>
-          <t-form-item arrow label="生日" name="birth" content-align="right">
+          <t-form-item arrow label="AI音色" name="ai_timbre_name" content-align="right">
             <t-input
-              v-model="formData.birth"
+              v-model="formData.ai_timbre_name"
               borderless
               align="right"
               placeholder="请输入内容"
-              @click="visible = true"
+              @click="showTimbreBox = true"
             ></t-input>
-            <t-popup v-model="visible" placement="bottom">
-              <t-date-time-picker
-                :value="formData.birth"
-                :mode="['date']"
-                title="选择日期"
-                start="2015-5-5"
-                format="YYYY-MM-DD"
-                @change="onChange"
-                @pick="onPick"
-                @confirm="onConfirm"
-                @cancel="onCancel"
-              />
+            <t-popup v-model="showTimbreBox" placement="bottom">
+              <t-picker
+                :columns="timbreOptions"
+                @confirm="onConfirmTimbre"
+                @cancel="showTimbreBox = false"
+              >
+                <template #option="item">{{ item.label }}</template>
+              </t-picker>
             </t-popup>
           </t-form-item>
+          <t-form-item label="AI人设" name="ai_profile">
+            <t-textarea
+              v-model="formData.ai_profile"
+              class="textarea"
+              indicator
+              :maxlength="300"
+              placeholder="请输入AI的介绍，最多300字"
+            ></t-textarea>
+          </t-form-item>
         </t-form>
-        <t-overlay :visible="isShowAICustomConfirm" >
+        <t-overlay :visible="showDoubleConfirm" >
           <t-dialog
-            v-model:visible="isShowAICustomConfirm"
+            v-model:visible="showDoubleConfirm"
             title=""
             content="更改AI角色将会清空所有陪伴记录，请谨慎操作！"
             cancel-btn="取消"
             confirm-btn="确认"
-            @confirm="onAICustomConfirm"
-            @cancel="onAICustomCancel"
+            @confirm="onDoubleConfirm"
+            @cancel="onDoubleCancel"
           ></t-dialog>
         </t-overlay>
       </t-popup>
@@ -92,6 +97,8 @@
 <script lang="ts" setup>
   import { inject, ref, h, reactive } from 'vue'
   import { PaletteIcon, Palette1Icon, CheckIcon } from 'tdesign-icons-vue-next';
+  import type { PickerColumnItem } from 'tdesign-mobile-vue';
+  import { PickerValue } from 'tdesign-mobile-vue';
   import axios from 'axios';
   const API_URL = inject('API_URL')
   const styledRole = ref(inject('styledRole',null))
@@ -193,34 +200,61 @@
   const formData = reactive({
     ai_name: '',
     ai_role: '',
+    ai_timbre_name: '',
     ai_timbre: '',
     ai_tts_model: '',
     ai_profile: ''
   });
+  const showTimbreBox = ref(false)
+  const timbreOptions = () => {
+    return [
+      {
+        label: '软萌童声',
+        value: 'sambert-zhiying-v1'
+      },
+      {
+        label: '诙谐男声',
+        value: 'sambert-zhiming-v1'
+      },
+      {
+        label: '知心姐姐',
+        value: 'sambert-zhiyuan-v1'
+      },
+      {
+        label: '自然男声',
+        value: 'sambert-zhishuo-v1'
+      },
+      {
+        label: '多种情感女声',
+        value: 'sambert-zhimiao-emo-v1'
+      }
+    ];
+  };
 
   const rules = {
     ai_name: [{ validator: (val: String) => val.length > 0, message: '不能为空' }],
     ai_role: [{ validator: (val: String) => val.length > 0, message: '不能为空' }],
-    ai_timbre: [{ validator: (val: String) => val.length > 0, message: '不能为空' }]
+    ai_timbre: [{ validator: (val: String) => val.length > 0, message: '不能为空' }],
+    ai_profile: [{ validator: (val: String) => val.length > 0, message: '不能为空' }]
   };
 
   const aiCustomCancel = () => {
     aiCustomAudio.pause();
     aiCustom.value = false;
   }
-  const isShowAICustomConfirm = ref(false)
+  const showDoubleConfirm = ref(false)
   const aiCustomComfirm = () => {
     aiCustomAudio.pause();
     if(userInfo.value.styled_role_id != null){
-      isShowAICustomConfirm.value = true;
+      showDoubleConfirm.value = true;
     }else{
       aiCustom.value = false;
     }
   }
 
-  const onAICustomConfirm = () => {
+  const onDoubleConfirm = () => {
     aiCustom.value = false;
-    isShowAICustomConfirm.value = false;
+    showDoubleConfirm.value = false;
     if(aiSelectItem.value && aiSelectItem.value.id != userInfo.value.styled_role_id){
       // push to api
       axios.post(API_URL+'/api/user/updateStyledRole?styled_role_id='+aiSelectItem.value.id, {
@@ -239,11 +273,26 @@
       })
     }
   }
-  const onAICustomCancel = () => {
+  const onDoubleCancel = () => {
     aiSelect.value = false;
     isShowConfirm.value = false;
     aiSelectItem.value = styledRole.value;
   }
+
+  const onConfirmTimbre = (val: string[], context: number[]) => {
+    showTimbreBox.value = false;
+    formData.ai_timbre_name = context['label'][0]
+    formData.ai_timbre = val[0]
+    formData.ai_tts_model = 'sambert'
+    console.log(formData);
+  };
+
+  const onResetCustom = () => {
+    console.log('onResetCustom');
+  };
+  const onSubmitCustom = () => {
+    console.log('onSubmitCustom');
+  };
 
 </script>
 <style scoped lang="less">
@@ -286,5 +335,9 @@
 
 .btn--confirm {
   color: #0052d9;
+}
+.textarea {
+  height: 200px;
+  width: 100%;
 }
 </style>
