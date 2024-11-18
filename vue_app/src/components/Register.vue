@@ -40,6 +40,8 @@ import { ref, reactive, defineProps, toRefs, onMounted } from 'vue';
 import { BrowseOffIcon } from 'tdesign-icons-vue-next';
 import axios from 'axios';
   
+const API_URL = process.env.VITE_API_URL
+
 const formData = reactive({
   name: '',
   password: '',
@@ -48,15 +50,15 @@ const formData = reactive({
 });
 
 const rules = {
-  name: [{ validator: (val: String) => /^[a-zA-Z0-9_-]{3,16}$/.test(val), message: '长度3-16个字符，只允许英文字符/数字/_/-' }],
-  password: [{ validator: (val: String) => val.length > 6, message: '长度大于6个字符' }],
-  phone: [{ validator: (val: String) => /^1[3-9]\d{9}$/.test(val), message: '请输入正确的手机号' }],
-  SN: [{ validator: (val: String) => (val !== '') && (val.length == 11), message: '请输入11位SN码' }],
+  name: [{ validator: (val: string) => /^[a-zA-Z0-9_-]{3,16}$/.test(val), message: '长度3-16个字符，只允许英文字符/数字/_/-' }],
+  password: [{ validator: (val: string) => val.length > 6, message: '长度大于6个字符' }],
+  phone: [{ validator: (val: string) => /^1[3-9]\d{9}$/.test(val), message: '请输入正确的手机号' }],
+  SN: [{ validator: (val: string) => (val !== '') && (val.length == 11), message: '请输入11位SN码' }],
 };
 
 const register = (e: any) => {
   if(e.validateResult === true){
-    axios.post(import.meta.env.VITE_API_URL+'/api/register', formData, {
+    axios.post(API_URL+'/api/register', formData, {
       headers: {
         'accept': 'application/json'
       }

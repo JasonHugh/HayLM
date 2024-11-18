@@ -37,6 +37,8 @@ import { ref, reactive, defineProps, toRefs, onMounted } from 'vue';
 import { BrowseOffIcon } from 'tdesign-icons-vue-next';
 import axios from 'axios';
   
+const API_URL = process.env.VITE_API_URL
+
 const formData = reactive({
   username: '',
   password: ''
@@ -53,7 +55,7 @@ const register = () => {
 
 const login = (e: any) => {
   if(e.validateResult === true){
-    axios.post(import.meta.env.VITE_API_URL+'/api/login', {grant_type:'password',username: formData.username,password: formData.password,client_id:'',client_secret:''}, {
+    axios.post(API_URL+'/api/login', {grant_type:'password',username: formData.username,password: formData.password,client_id:'',client_secret:''}, {
       headers: {
         'accept': 'application/json',
         'Content-Type': 'application/x-www-form-urlencoded'

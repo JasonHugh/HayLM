@@ -8,7 +8,7 @@
     <t-cell-group theme="card" style="margin-top: 10px;">
       <t-cell :left-icon="user" title="个人信息" arrow />
       <t-cell :left-icon="rootlist" title="陪伴报告" arrow />
-      <t-cell :left-icon="rollback" title="退出登陆" arrow />
+      <t-cell :left-icon="rollback" title="退出登陆" arrow @click="logout" />
     </t-cell-group>
   </main>
 </template>
@@ -21,7 +21,7 @@
   import AiConfig from './AiConfig.vue';
   const router = useRouter()
 
-  const API_URL = import.meta.env.VITE_API_URL
+  const API_URL = process.env.VITE_API_URL
   provide('API_URL', API_URL)
 
   const app = () => h(AppIcon);
@@ -79,6 +79,10 @@
     .catch(error => {
       console.error(error);
     });
+  }
+  const logout = () => {
+    localStorage.removeItem('token');
+    router.push({ path: "/login" });
   }
   onMounted(() => {
     // check if user logged

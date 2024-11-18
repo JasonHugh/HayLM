@@ -10,7 +10,7 @@
         <t-list style="overflow-y: scroll;margin-top: 53px;height: calc(100vh - 53px);">
           <t-cell v-for="item in airoles" :right-icon="active(item.id)" :key="item.id" :title="item.ai_name" :description="item.profile" align="top" @click="aiSelectClick(item)">
             <template #leftIcon>
-                <t-avatar shape="circle" :image="API_URL+'/image/'+item.avatar_path" />
+                <t-avatar shape="circle" :image="API_URL+'/api/image/'+item.avatar_path" />
             </template>
           </t-cell>
         </t-list>
@@ -132,7 +132,7 @@
 
     aiSelectAudio.pause();
     // play audio
-    aiSelectAudio = new Audio(API_URL+'/audio/'+item.audio_path);
+    aiSelectAudio = new Audio(API_URL+'/api/audio/'+item.audio_path);
     aiSelectAudio.play();
   }
   const aiSelectCancel = () => {

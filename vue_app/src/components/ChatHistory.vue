@@ -36,6 +36,7 @@
   import axios from 'axios';
   import { useRouter } from 'vue-router'
   const router = useRouter()
+  const API_URL = process.env.VITE_API_URL
 
   const MAX_DATA_LEN = 60;
   const sessionId = 1;
@@ -57,7 +58,7 @@
   }
   const loadData = (data: any, isRefresh?: Boolean) => {
     return new Promise((resolve) => {
-      axios.get(import.meta.env.VITE_API_URL+'/api/chat/history?session_id='+sessionId+'&date='+getDateString(selectDate.value), {
+      axios.get(API_URL+'/api/chat/history?session_id='+sessionId+'&date='+getDateString(selectDate.value), {
         headers: {
           'accept': 'application/json',
         }
@@ -139,7 +140,7 @@
     }
     console.log(historyIdList)
     new Promise((resolve) => {
-      axios.delete(import.meta.env.VITE_API_URL+'/api/chat/history/delete', {data: historyIdList}).then(response => {
+      axios.delete(API_URL +'/api/chat/history/delete', {data: historyIdList}).then(response => {
         if(response.data.success){
           console.log("delete success");
           // remove from list

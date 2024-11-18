@@ -33,7 +33,7 @@ import { EventSourcePolyfill } from 'event-source-polyfill';
 import { MicrophoneIcon, StopIcon } from 'tdesign-icons-vue-next';
 import { useRouter } from 'vue-router'
 const router = useRouter()
-const API_URL = import.meta.env.VITE_API_URL
+const API_URL = process.env.VITE_API_URL
 
 // check if user logged
 const token = localStorage.getItem('token');

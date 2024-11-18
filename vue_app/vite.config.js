@@ -6,8 +6,13 @@ import basicSSL from "@vitejs/plugin-basic-ssl";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ command, mode, ssrBuild })=>{
-  const VITE_API_URL = loadEnv(mode, process.cwd());
+  const env = loadEnv(mode, process.cwd());
   return {
+    define: {
+      'process.env': {
+        VITE_API_URL: env.VITE_API_URL
+      }
+    },
     plugins: [
       vue(),
       basicSSL()
