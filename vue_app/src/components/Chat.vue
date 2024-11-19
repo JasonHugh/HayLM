@@ -11,10 +11,10 @@
     </t-list>
     <t-loading theme="dots" size="40px" style="height: 100px;position: fixed;bottom: 130px;left: 50%;margin-left: -20px;" v-show="isLoading" />
     <t-row style="height: 100px;position: fixed;bottom: 50px;padding: 0 10px;">
-      <t-col span="4" style="width: 80px;height: 80px;">
-        <t-button :theme="theme" :disabled="isLoading" size="large" :icon="chatIcon" shape="circle" @touchstart="startRecording" @touchend="stopRecording" style="width: 80px;height: 80px;"></t-button>
+      <t-col style="width: 120px;height: 80px;">
+        <t-button :theme="theme" :disabled="isLoading" size="large" :icon="chatIcon" @touchstart="startRecording" @touchend="stopRecording" style="width: 100%;height: 100%;"></t-button>
       </t-col>
-      <t-col span="12" style="width: calc(100vw - 120px);margin-left: 10px;margin-top: 13px;">
+      <t-col style="width: calc(100vw - 160px);margin-left: 10px;margin-top: 13px;">
         <t-input v-model="chatInput" placeholder="请输入内容" borderless style="border: 1px solid rgba(220, 220, 220, 1);border-radius: 6px;padding: 10px;">
           <template #suffix>
             <t-button theme="primary" size="small" @click="send" :disabled="isLoading"> 发送 </t-button>
@@ -191,7 +191,7 @@ const stopRecording = async () => {
     const formData = new FormData();
     formData.append('wav', audioBlob, 'recording.wav');
     new Promise((resolve) => {
-      axios.post(API_URL+'/api/asr', formData, {
+      axios.post(API_URL+'/asr', formData, {
         headers: {
           'accept': 'application/json',
           'Content-Type': 'multipart/form-data'

@@ -8,7 +8,7 @@
   <main>
   <t-pull-down-refresh v-model="refreshing" @refresh="onRefresh" style="overflow-y: scroll;">
     <t-list :async-loading="loading" @scroll="onScroll">
-    <t-notice-bar visible content="这是一条普通的通知信息" :prefix-icon="false" v-show="isEmpty"/>
+      <t-notice-bar visible content="今日没有聊天记录" :prefix-icon="false" v-show="isEmpty"/>
       <t-swipe-cell v-for="(item, index) in listPull" :key="item.id">
         <div v-if="item.role=='user'">
           <t-cell :title="item.role + '&nbsp;&nbsp;&nbsp;' + item.create_time" :description="item.content" align="top">
@@ -58,7 +58,7 @@
   }
   const loadData = (data: any, isRefresh?: Boolean) => {
     return new Promise((resolve) => {
-      axios.get(API_URL+'/api/chat/history?session_id='+sessionId+'&date='+getDateString(selectDate.value), {
+      axios.get(API_URL+'/chat/history?session_id='+sessionId+'&date='+getDateString(selectDate.value), {
         headers: {
           'accept': 'application/json',
         }
@@ -76,12 +76,19 @@
                 top: document.getElementsByClassName('t-list')[0].scrollHeight
               })
             })
-            console.log(data.value)
           }else{
             data.value = []
           }
         }else{
           console.error(response.data.message);
+        }
+
+        loading.value = '';
+        refreshing.value = false;
+        if(listPull.value.length == 0){
+          isEmpty.value = true
+        }else{
+          isEmpty.value = false
         }
       })
       .catch(error => {
@@ -110,16 +117,7 @@
       return;
     }
     loading.value = 'loading';
-    loadData(listPull, isRefresh).then(() => {
-      loading.value = '';
-      refreshing.value = false;
-
-      if(listPull.value.length == 0){
-        isEmpty.value = true
-      }else{
-        isEmpty.value = false
-      }
-    });
+    loadData(listPull, isRefresh);
   };
   
   const onRefresh = () => {
@@ -140,7 +138,7 @@
     }
     console.log(historyIdList)
     new Promise((resolve) => {
-      axios.delete(API_URL +'/api/chat/history/delete', {data: historyIdList}).then(response => {
+      axios.delete(API_URL +'/chat/history/delete', {data: historyIdList}).then(response => {
         if(response.data.success){
           console.log("delete success");
           // remove from list

@@ -18,8 +18,8 @@
   import { UserIcon, RollbackIcon, AppIcon, PaletteIcon, Palette1Icon, RootListIcon, CheckIcon } from 'tdesign-icons-vue-next';
   import axios from 'axios';
   import { useRouter } from 'vue-router'
-  import AiConfig from './AiConfig.vue';
   const router = useRouter()
+  import AiConfig from './AiConfig.vue';
 
   const API_URL = process.env.VITE_API_URL
   provide('API_URL', API_URL)
@@ -37,7 +37,7 @@
   provide('aiSelectItem', aiSelectItem)
 
   const loadUserInfo = () => {
-    axios.get(API_URL+'/api/user/getConfig', {
+    axios.get(API_URL+'/user/getConfig', {
       headers: {
         'accept': 'application/json',
       }
@@ -62,7 +62,7 @@
   const airoles = ref([])
   provide('airoles', airoles)
   const loadAIRoles = async () => {
-    axios.get(API_URL+'/api/airoles', {
+    axios.get(API_URL+'/airoles', {
       headers: {
         'accept': 'application/json',
       }

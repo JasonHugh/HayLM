@@ -58,7 +58,7 @@ const rules = {
 
 const register = (e: any) => {
   if(e.validateResult === true){
-    axios.post(API_URL+'/api/register', formData, {
+    axios.post(API_URL+'/register', formData, {
       headers: {
         'accept': 'application/json'
       }

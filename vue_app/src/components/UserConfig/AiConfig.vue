@@ -10,7 +10,7 @@
         <t-list style="overflow-y: scroll;margin-top: 53px;height: calc(100vh - 53px);">
           <t-cell v-for="item in airoles" :right-icon="active(item.id)" :key="item.id" :title="item.ai_name" :description="item.profile" align="top" @click="aiSelectClick(item)">
             <template #leftIcon>
-                <t-avatar shape="circle" :image="API_URL+'/api/image/'+item.avatar_path" />
+                <t-avatar shape="circle" :image="API_URL+'/image/'+item.avatar_path" />
             </template>
           </t-cell>
         </t-list>
@@ -32,7 +32,7 @@
         <div class="header">
           <div class="btn btn--cancel" aria-role="button" @click="aiCustomCancel">取消</div>
           <div class="title">自定义AI角色</div>
-          <div class="btn btn--confirm" aria-role="button" @click="aiCustomComfirm">确定</div>
+          <div class="btn btn--cancel" aria-role="button">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</div>
         </div>
         <t-form  style="overflow-y: scroll;margin-top: 53px;height: calc(100vh - 53px);"
           ref="form"
@@ -44,7 +44,7 @@
           :disabled="false"
           scroll-to-first-error="auto"
           @reset="onResetCustom"
-          @submit="onSubmitCustom"
+          @submit="aiCustomComfirm"
         >
           <t-form-item label="AI名称" name="ai_name" help="输入你对AI的称呼，例如：悟空">
             <t-input v-model="formData.ai_name" borderless placeholder="请输入内容"></t-input>
@@ -79,6 +79,10 @@
               placeholder="请输入AI的介绍，最多300字"
             ></t-textarea>
           </t-form-item>
+          <div class="button-group">
+            <t-button theme="primary" type="submit" size="large">提交</t-button>
+            <t-button theme="default" variant="base" type="reset" size="large">重置</t-button>
+          </div>
         </t-form>
         <t-overlay :visible="showDoubleConfirm" >
           <t-dialog
@@ -97,9 +101,9 @@
 <script lang="ts" setup>
   import { inject, ref, h, reactive } from 'vue'
   import { PaletteIcon, Palette1Icon, CheckIcon } from 'tdesign-icons-vue-next';
-  import type { PickerColumnItem } from 'tdesign-mobile-vue';
-  import { PickerValue } from 'tdesign-mobile-vue';
   import axios from 'axios';
+  import { useRouter } from 'vue-router'
+  const router = useRouter()
   const API_URL = inject('API_URL')
   const styledRole = ref(inject('styledRole',null))
   const userInfo = ref(inject('userInfo',null))
@@ -132,7 +136,7 @@
 
     aiSelectAudio.pause();
     // play audio
-    aiSelectAudio = new Audio(API_URL+'/api/audio/'+item.audio_path);
+    aiSelectAudio = new Audio(API_URL+'/audio/'+item.audio_path);
     aiSelectAudio.play();
   }
   const aiSelectCancel = () => {
@@ -155,7 +159,7 @@
     isShowConfirm.value = false;
     if(aiSelectItem.value && aiSelectItem.value.id != userInfo.value.styled_role_id){
       // push to api
-      axios.post(API_URL+'/api/user/updateStyledRole?styled_role_id='+aiSelectItem.value.id, {
+      axios.post(API_URL+'/user/updateStyledRole?styled_role_id='+aiSelectItem.value.id, {
         headers: {
           'accept': 'application/json',
           'Content-Type': 'application/json'
@@ -189,6 +193,7 @@
     formData.ai_name = userInfo.value.ai_name
     formData.ai_role = userInfo.value.ai_role
     formData.ai_timbre = userInfo.value.ai_timbre
+    formData.ai_timbre_name = userInfo.value.ai_timbre_name
     formData.ai_tts_model = userInfo.value.ai_tts_model
     formData.ai_profile = userInfo.value.ai_profile
     if(userInfo.value.styled_role_id != null){
@@ -235,6 +240,8 @@
     ai_name: [{ validator: (val: String) => val.length > 0, message: '不能为空' }],
     ai_role: [{ validator: (val: String) => val.length > 0, message: '不能为空' }],
     ai_timbre: [{ validator: (val: String) => val.length > 0, message: '不能为空' }],
+    ai_timbre_name: [{ validator: (val: String) => val.length > 0, message: '不能为空' }],
+    ai_tts_model: [{ validator: (val: String) => val.length > 0, message: '不能为空' }],
     ai_profile: [{ validator: (val: String) => val.length > 0, message: '不能为空' }]
   };
 
@@ -243,35 +250,37 @@
     aiCustom.value = false;
   }
   const showDoubleConfirm = ref(false)
-  const aiCustomComfirm = () => {
-    aiCustomAudio.pause();
-    if(userInfo.value.styled_role_id != null){
+  const aiCustomComfirm = (context) => {
+    if(context.validateResult === true){
+      aiCustomAudio.pause();
       showDoubleConfirm.value = true;
-    }else{
-      aiCustom.value = false;
     }
   }
 
   const onDoubleConfirm = () => {
     aiCustom.value = false;
     showDoubleConfirm.value = false;
-    if(aiSelectItem.value && aiSelectItem.value.id != userInfo.value.styled_role_id){
-      // push to api
-      axios.post(API_URL+'/api/user/updateStyledRole?styled_role_id='+aiSelectItem.value.id, {
-        headers: {
-          'accept': 'application/json',
-          'Content-Type': 'application/json'
-        }
-      }).then(response => {
-        if(response.data.success){
-          console.log(response.data.data)
-          userInfo.value.styled_role_id = aiSelectItem.value.id
-          styledRole.value = aiSelectItem.value
-        }else{
-          console.error(response.data.message);
-        }
-      })
-    }
+
+    axios.post(API_URL+'/user/updateCustomAIRole', formData, {
+      headers: {
+        'accept': 'application/json',
+        'Content-Type': 'application/json'
+      }
+    }).then(response => {
+      if(response.data.success){
+        console.log(response.data.data)
+        userInfo.value.styled_role_id = null
+        styledRole.value = null
+        userInfo.value.ai_name = formData.ai_name
+        userInfo.value.ai_role = formData.ai_role
+        userInfo.value.ai_timbre = formData.ai_timbre
+        userInfo.value.ai_timbre_name = formData.ai_timbre_name
+        userInfo.value.ai_tts_model = formData.ai_tts_model
+        userInfo.value.ai_profile = formData.ai_profile
+      }else{
+        console.error(response.data.message);
+      }
+    })
   }
   const onDoubleCancel = () => {
     aiSelect.value = false;
@@ -289,9 +298,6 @@
 
   const onResetCustom = () => {
     console.log('onResetCustom');
-  };
-  const onSubmitCustom = () => {
-    console.log('onSubmitCustom');
   };
 
 </script>
@@ -339,5 +345,23 @@
 .textarea {
   height: 200px;
   width: 100%;
+}
+.button-group {
+  background-color: var(--bg-color-demo, #fff);
+  box-sizing: border-box;
+  padding: 16px;
+  display: flex;
+  justify-content: space-between;
+  position: relative;
+
+  .t-button {
+    height: 32px;
+    flex: 1;
+
+    &:not(:last-child) {
+      flex: 1;
+      margin-right: 16px;
+    }
+  }
 }
 </style>

@@ -55,7 +55,7 @@ const register = () => {
 
 const login = (e: any) => {
   if(e.validateResult === true){
-    axios.post(API_URL+'/api/login', {grant_type:'password',username: formData.username,password: formData.password,client_id:'',client_secret:''}, {
+    axios.post(API_URL+'/login', {grant_type:'password',username: formData.username,password: formData.password,client_id:'',client_secret:''}, {
       headers: {
         'accept': 'application/json',
         'Content-Type': 'application/x-www-form-urlencoded'
