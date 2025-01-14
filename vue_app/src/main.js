@@ -9,6 +9,7 @@ import UserConfig from './components/UserConfig/UserConfig.vue';
 import Login from './components/Login.vue';
 import Chat from './components/Chat.vue';
 import Register from './components/Register.vue';
+import Game from './components/UserConfig/Game.vue';
 
 const routes = [
     {
@@ -35,6 +36,11 @@ const routes = [
         name: 'register', 
         path: '/register', 
         component: Register 
+    },
+    { 
+        name: 'game', 
+        path: '/game', 
+        component: Game 
     },
 ]
 

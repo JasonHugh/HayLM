@@ -58,6 +58,7 @@
               borderless
               align="right"
               placeholder="请输入内容"
+              readonly=true
               @click="showTimbreBox = true"
             ></t-input>
             <t-popup v-model="showTimbreBox" placement="bottom">

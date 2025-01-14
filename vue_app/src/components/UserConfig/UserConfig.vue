@@ -3,7 +3,7 @@
   <main>
     <AiConfig />
     <t-cell-group theme="card" style="margin-top: 10px;">
-      <t-cell :left-icon="app" title="教育智能体" arrow />
+      <t-cell :left-icon="app" title="寓教于乐" arrow />
     </t-cell-group>
     <t-cell-group theme="card" style="margin-top: 10px;">
       <t-cell :left-icon="user" title="个人信息" arrow />

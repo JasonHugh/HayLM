@@ -20,16 +20,26 @@ const value = ref('history');
 const list = ref([
   { value: 'history', label: '历史', icon: 'history' },
   { value: 'chat', label: '聊天', icon: 'chat' },
+  { value: 'game', label: '趣学', icon: 'sonic' },
   { value: 'config', label: '设置', icon: 'user' },
 ]);
 
 const jump = (value: String) => {
-  if(value == 'history'){
-    router.push({ path: "/" });
-  }else if(value == 'chat'){
-    router.push({ path: "/chat" });
-  }else if(value == 'config'){
-    router.push({ path: "/config" });
+  switch (value) {
+    case 'history':
+      router.push({ path: "/" });
+      break;
+    case 'chat':
+      router.push({ path: "/chat" });
+      break;
+    case 'game':
+      router.push({ path: "/game" });
+      break;
+    case 'config':
+      router.push({ path: "/config" });
+      break;
+    default:
+      break;
   }
 }
 </script>
