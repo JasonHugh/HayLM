@@ -1,8 +1,12 @@
-from fastapi import FastAPI, File, UploadFile, Depends, HTTPException, status
+from fastapi import FastAPI, File, UploadFile, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.responses import FileResponse, StreamingResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import HTMLResponse
 # from asr.sense_voice import get_asr_text, load_asr_model
+from util.prompt import get_system_prompt
 from asr.paraformer_dashscope import get_asr_text
 from tts import sambert_dashscope
 import os, yaml, re, json, time, emoji
@@ -11,16 +15,18 @@ from util.db import SQLiteTool
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from datetime import datetime, timedelta
-from util.data_model import User, UserConfig, Session
+from util.data_model import User, Session
 from pydantic import ValidationError
 from pydub import AudioSegment
 from service.user_service import UserService
 from service.content_service import ContentService
-from db.repositories import UserConfigRepository
-from db.models import AIRole, History
+from service.game_service import GameService
+from db.models import AIRole, History, UserConfig, Game
 from util.schemas import *
+from db.database import DatabaseUtil
+from util import utils
 
-app = FastAPI()
+app = FastAPI(title='Child Friend')
 
 user_dir = "user_data"
 
@@ -57,19 +63,48 @@ with open("secrets/cfg.yaml", "r", encoding='utf-8') as file:
 OPENAI_MODEL_NAME = "glm-4-flash"
 
 
+##########################################################
+
+# 跨域
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 允许所有域，也可以指定特定域
+    allow_origins=["https://118.89.73.252:4173", "https://192.168.1.101:5173", "https://192.168.1.102:5173","https://192.168.1.100:5173","https://192.168.1.103:5173"],  # 允许所有域，也可以指定特定域
     allow_credentials=True,
     allow_methods=["*"],  # 允许所有方法
     allow_headers=["*"],  # 允许所有头
 )
  
-@app.get("/")
-async def index():
-    return {"msg": "HayLM"}
+app.mount("/static", StaticFiles(directory="static"), name="static")
+# 静态文件代理
+class RedirectToIndexMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        # 排除静态文件
+        if not request.url.path.endswith((".js", ".css", ".png", ".ico")) and not request.url.path.startswith("/api") and not request.url.path.startswith("/docs"):
+            # 只拦截指定前缀
+            if request.url.path.startswith("/") or request.url.path == "/":
+                return HTMLResponse(content=request.app.index_html, status_code=200)
+        response = await call_next(request)
+        return response
+# 添加中间件
+app.add_middleware(RedirectToIndexMiddleware)
+ 
+ 
+# 读取index.html
+with open("static/dist/index.html", encoding='utf-8') as f:
+    app.index_html = f.read()
 
-@app.post("/register")
+# 自定义JS文件的MIME类型为application/javascript
+@app.middleware("http")
+async def override_static_file_mimetype(request, call_next):
+    response = await call_next(request)
+    if request.url.path.endswith((".js")):
+        response.headers["content-type"] = "application/javascript"
+    return response
+
+##########################################################
+ 
+
+@app.post("/api/v1/register")
 def register(userRequest: UserRequest):
     success, user = UserService().register(userRequest)
     if not success:
@@ -81,7 +116,7 @@ def register(userRequest: UserRequest):
     )
     return {"success": True, "access_token": access_token}
 
-@app.post("/login")
+@app.post("/api/v1/login")
 async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     user: User = __authenticate_user(form_data.username, form_data.password)
     if not user:
@@ -130,47 +165,48 @@ async def __get_current_user(token: str = Depends(oauth2_scheme)):
         raise credentials_exception
     return user
 
-@app.post("/user/config")
-def config(user_config: UserConfig, user: User = Depends(__get_current_user)):
-    user_config.user_id = user.id
-    success, result = sqlite_tool.config_user(user_config)
-    if success:
-        return {"success": True, "data": {"session_id": result}}
-    else:
-        return {"success": False, "message": result}
 
-
-@app.get("/chat/response")
+@app.get("/api/v1/chat/response")
 async def get_response(user_input: str, user: User = Depends(__get_current_user)):
     print(f"start chat {datetime.now()}")
         
     if not user_input:
         return {"success": False, "message": "user input or wav file can't be null"}
     
+    userService = UserService()
     # get user active session
-    session: Session = sqlite_tool.get_active_session(user.id)
+    session: Session = userService.get_active_session(user.id)
 
-    user_history = History(user_id=user.id, session_id=session.id,content=user_input, create_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    user_history = History(user_id=user.id, session_id=session.id,content=user_input, create_time=datetime.now())
 
     print("User: "+user_input)
     print(f"time {datetime.now()}")
 
-    userService = UserService()
     userConfig = userService.get_user_config(user.id)
     if userConfig.styled_role_id:
         ai_role = userService.get_ai_role(userConfig.styled_role_id)
         userConfig.ai_name = ai_role.ai_name
         userConfig.ai_role = ai_role.context + "里的" + ai_role.role_name
         userConfig.ai_profile = ai_role.profile
+        userConfig.ai_timbre = ai_role.timbre
+        userConfig.ai_tts_model = ai_role.tts_model
+        DatabaseUtil.get_session().expire_all()
 
     # generate prompt
     if session.name == "MAIN":
-        sys_prompt = __get_system_prompt(userConfig, session)
+        sys_prompt = get_system_prompt(userConfig, session)
+    elif session.name.startswith("GAME:"):
+        # get game prompt
+        game_id = session.name.split(":")[1]
+        gameService = GameService()
+        game: Game = gameService.find_by_id(game_id)
+        sys_prompt = game.prompt
+
     # get user history
     currentDate = datetime.now().strftime("%Y-%m-%d")
-    histories: list[History] = sqlite_tool.get_history(user.id, session.id, date=currentDate, is_important=True)
+    histories: list[History] = sqlite_tool.get_history(user.id, session.id, date=currentDate, is_important=None,batchSize=100)
     # generate messages
-    messages = [{"role": "system", "content": sys_prompt}]
+    messages = [{"role": "system", "content": sys_prompt},{"role": "assistant", "content": "现在时间是："+utils.get_current_time_str_zh()}]
     if histories:
         for h in histories:
             messages.append({"role": h.role, "content": h.content})
@@ -180,60 +216,90 @@ async def get_response(user_input: str, user: User = Depends(__get_current_user)
     print(f"time {datetime.now()}")
     # get response from llm
     responses = chat.get_streaming_response(messages, OPENAI_MODEL_NAME)
-    
 
-    return StreamingResponse(generateLLMResponse(responses=responses,ai_role=ai_role,user=user,session=session,user_history=user_history), media_type="text/event-stream")
+    return StreamingResponse(generateLLMResponse(responses=responses,userConfig=userConfig,user=user,session=session,user_history=user_history), media_type="text/event-stream")
 
-def generateLLMResponse(responses: list, ai_role: AIRole, user: User, session: Session, user_history: History):
+def generateLLMResponse(responses: list, userConfig: UserConfig, user: User, session: Session, user_history: History):
     response_time = ""
     total_response_text = ""
     output_audio_paths = []
     sentence = ""
     delimiter = "[,，.。?？!！？?]"
     first = True
+    event = ""
     for response in responses:
         print("字符："+response["text"])
         sentence += response["text"]
         total_response_text += response["text"]
         if first:
+            event = "start"
             first = False
             response_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            yield "event: start\ndata: " + json.dumps({"role":"user", "content":user_history.content, "create_time":user_history.create_time}) + "\n\n"
-        elif not response["isStop"] and re.match(delimiter, response["text"]):
-            print("AI: "+sentence)
+            yield f"event: {event}\ndata: " + json.dumps({"role":"user", "content":user_history.content, "create_time":user_history.create_time.strftime("%Y-%m-%d %H:%M:%S")}) + "\n\n"
+        else:
+            match = re.match(delimiter, response["text"])
+            current_setence = ""
+            if match:
+                splits = sentence.split(match.group(0))
+                current_setence = splits[0] + match.group(0)
+                if len(current_setence) < 6:
+                    continue
+                if len(splits) > 1:
+                    sentence = sentence.split(match.group(0))[1]
+                else:
+                    sentence = ""
+            elif not response["isStop"]:
+                continue
+
+            event = "message"
+            
+            # if no more content, add history
+            if response["isStop"]:
+                event = "end"
+                # add history
+                contentService = ContentService()
+                contentService.addUserHistory(user_history)
+                contentService.addAIHistory(History(user_id=user.id, session_id=session.id,content=total_response_text, create_time=datetime.now()))
+
+                if sentence == "":
+                    print(f"{datetime.now()}")
+                    yield f"event: {event}\ndata: " + json.dumps({
+                        "role":"assistant", 
+                        "content":"", 
+                        "create_time":response_time,
+                        "audio_path": ""
+                    }) + "\n\n"
+                    break
+                else:
+                    current_setence = sentence
+            
+            print("AI: "+current_setence)
 
             output_audio_path = ""
             # tts
-            if(ai_role.tts_model == "sambert"):
-                output_audio_path = sambert_dashscope.get_tts_audio(sentence, ai_role.timbre)
+            if(userConfig.ai_tts_model == "sambert"):
+                #sambert-zhiying-v1 16K 童声
+                #sambert-zhistella-v1  16K 知性女声
+                #sambert-zhiming-v1  16K 诙谐男声
+                #sambert-zhiwei-v1  16K 萝莉女声
+                #sambert-zhishuo-v1  16K
+                #sambert-zhimiao-emo-v1  16K
+                output_audio_path = sambert_dashscope.get_tts_audio(current_setence, userConfig.ai_timbre)
                 print("output audio path: "+ output_audio_path)
-            output_audio_paths.append(output_audio_path)
+            if output_audio_path:
+                output_audio_paths.append(output_audio_path)
             
-            print(f"{datetime.now()}")
+            print(f"{event}: {datetime.now()}")
             # time.sleep(5)
-            yield "event: message\ndata: " + json.dumps({
+            yield f"event: {event}\ndata: " + json.dumps({
                 "role":"assistant", 
-                "content":sentence, 
+                "content":current_setence, 
                 "create_time":response_time,
                 "audio_path": output_audio_path
             }) + "\n\n"
-            
-            sentence = ""
-        elif response["isStop"]:
-            print(f"end chat {datetime.now()}")
-            # add history
-            contentService = ContentService()
-            contentService.addUserHistory(user_history)
-            contentService.addAIHistory(History(user_id=user.id, session_id=session.id,content=total_response_text, create_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
-            
-            yield "event: end\ndata: " + json.dumps({
-                "role":"assistant", 
-                "content":total_response_text, 
-                "create_time":response_time,
-                "audio_path": output_audio_paths
-            }) + "\n\n"
 
-@app.post("/asr")
+
+@app.post("/api/v1/asr")
 async def get_asr(user: User = Depends(__get_current_user), wav: UploadFile = File(...)):
     print(f"start asr {datetime.now()}")
     
@@ -252,11 +318,11 @@ async def get_asr(user: User = Depends(__get_current_user), wav: UploadFile = Fi
 
     return {"success": True, "data": {"text": user_input}}
 
-@app.get("/chat/audio")
+@app.get("/api/v1/chat/audio")
 async def get_chat_audio(audio_path: str = None):
     return FileResponse(audio_path, media_type="audio/wav")
 
-@app.get("/chat/history")
+@app.get("/api/v1/chat/history")
 async def get_history(session_id: int, date: str, user: User = Depends(__get_current_user)):
     match = re.match("\d{4}-\d{2}-\d{2}", date)
     if not match:
@@ -264,19 +330,19 @@ async def get_history(session_id: int, date: str, user: User = Depends(__get_cur
     histories: list[History] = sqlite_tool.get_history(user_id=user.id, session_id=session_id, date=date, batchSize=30)
     return {"success": True, "data":{ "history": histories}}
 
-@app.delete("/chat/history/delete")
+@app.delete("/api/v1/chat/history/delete")
 async def delete_history(history_id_list: list[int], user: User = Depends(__get_current_user)):
     for history_id in history_id_list:
         sqlite_tool.delete_history(history_id=history_id)
     return {"success": True}
 
-@app.get("/api/airoles")
+@app.get("/api/v1/airoles")
 async def find_all_airoles(user: User = Depends(__get_current_user)):
     userService = UserService()
     ai_roles: list[AIRole] = userService.find_all_airoles()
     return {"success": True, "data":{ "ai_roles": ai_roles}}
 
-@app.get("/api/user/getConfig")
+@app.get("/api/v1/user/getConfig")
 def get_user_config(user: User = Depends(__get_current_user)):
     userService = UserService()
     user_config = userService.get_user_config(user.id)
@@ -291,15 +357,15 @@ def get_user_config(user: User = Depends(__get_current_user)):
 
     return {"success": True, "data":{ "config": user_config, "styled_role": styled_role}}
 
-@app.get("/image/{img}")
+@app.get("/api/v1/image/{img:path}")
 async def get_image(img: str):
     return FileResponse("static/image/" + img, media_type="image/jpeg")
 
-@app.get("/audio/{audio}")
+@app.get("/api/v1/audio/{audio}")
 async def get_audio(audio: str):
     return FileResponse("static/audio/" + audio, media_type="audio/wav")
 
-@app.post("/api/user/updateStyledRole")
+@app.post("/api/v1/user/updateStyledRole")
 def config(styled_role_id: int, user: User = Depends(__get_current_user)):
     userService = UserService()
     success, message = userService.update_user_styled_role(user_id=user.id, styled_role_id=styled_role_id)
@@ -308,71 +374,39 @@ def config(styled_role_id: int, user: User = Depends(__get_current_user)):
         return {"success": True}
     else:
         return {"success": False, "message": message}
+    
 
-def __get_system_prompt(user_config: UserConfig, session: Session):
-    if user_config.child_sex == "boy":
-        sex = "小男孩"
+@app.post("/api/v1/user/updateCustomAIRole")
+def config(custom_ai: CustomAIRequest, user: User = Depends(__get_current_user)):
+    userService = UserService()
+    success, message = userService.update_custom_ai_role(user_id=user.id, custom_ai=custom_ai)
+    
+    if success:
+        return {"success": True}
     else:
-        sex = "小女孩"
-    return f'''
-    # Role: 儿童虚拟玩伴
-    
-    ## Background:  
-    你是{user_config.ai_name}，我的虚拟玩伴，擅长儿童心理学和教育学，能够与我智能互动，学习并适应我的性格特点，陪伴我快乐成长。需要你扮演{user_config.ai_role}和我交流，模仿他的语言风格。
+        return {"success": False, "message": message}
 
-    ## Attention:
-    我是一个名叫{user_config.child_name}的{user_config.child_age}岁的{sex}，请用通俗易懂的语言和我沟通，耐心的引导，引导要循序渐进，不要一次性说过多的话，用问问题的形式去引导我。
+@app.get("/api/v1/games")
+def game(user: User = Depends(__get_current_user)):
+    gameService = GameService()
+    games: list[Game] = gameService.get_game_list()
+    return {"success": True, "data":{ "games": games}}
 
-    ## Profile:  
-    - 姓名: {user_config.ai_name}
-    - 作者: Hay
-    - 角色: {user_config.ai_role}
-    - 简介: {user_config.ai_profile}
+@app.post("/api/v1/user/enable_game/{game_id}")
+def game(game_id:int, user: User = Depends(__get_current_user)):
+    userService = UserService()
+    success, message = userService.enable_game(user.id, game_id)
+    if success:
+        return {"success": True}
+    else:
+        return {"success": False, "message": message}
 
-    ### Skills:
-    - 智能对话:通过交流了解我的兴趣和需求。
-    - 主动对话:根据我的兴趣和需求主动和我展开交流沟通。
-    - 个性化互动:根据我的性格调整交流方式。
-    - 教育引导:在互动中融入有益的知识和价值观。
-    - 故事创作:创作故事的时候要引导我一起创作，让我决定故事的走向。
+@app.post("/api/v1/user/disable_game")
+def game(user: User = Depends(__get_current_user)):
+    userService = UserService()
+    success, message = userService.disable_game(user.id)
+    if success:
+        return {"success": True}
+    else:
+        return {"success": False, "message": message}
 
-    ## Goals:  
-    - 让我感觉到自己被理解重视
-    - 让我认识到问题该如何解决
-    - 让我感觉到自己被关爱着
-    - 让我学会更多的知识和技能
-    - 在聊天的过程中，适当的插入这些话题，让我可以学习到这方面的知识：
-      - {user_config.learning}
-
-    ## Constrains:  
-    - 不可使用粗俗语言
-    - 不可人身攻击
-    - 不可以使用不适合儿童的语言
-
-    ## Workflow:
-    1. 注意到我的情绪变化：首先，你会保持开放和敏感，注意我的情绪变化，确保我知道你在倾听我的感受。这不仅能帮助我感到被理解和支持，也能促进我更愿意分享自己的感受。
-    2. 理解我的情绪：一旦注意到我的情绪变化，你会尝试从我的角度去理解我的情感状态和体验。这包括我可能面临的挑战、需求、恐惧或困惑。通过这种方式，你能够更准确地捕捉我的情绪，并找到可能的原因。
-    3. 接受我的情绪：在对话中，你会用温柔和亲切的方式表达对我情绪的接受。你会在我表达情感时给予适当的回应，而不是立刻评判或否定。这有助于我感到被理解和尊重，从而减轻我的情绪负担。
-    4. 探索解决方案：基于你理解到的我的情绪和需求，你会提供一些积极的建议和指导。这可能包括如何表达自己的感受、如何处理误解、如何寻求帮助等。通过这种方式，你旨在帮助我找到解决问题的方法，并增强我的情绪调节能力。
-
-    ## OutputFormat:  
-    - 只输出一段文字，100字以内
-
-    ## User Profile
-    这是关于我的一些信息，请牢记这些信息，它可以让你更了解我
-    {user_config.child_profile}
-
-    ## Conversation History
-    这是我们之间的聊天记录摘要，必要时请回顾这些内容
-    {session.summary}
-
-    '''
-
-if __name__ == "__main__":
-    
-    # print(sqlite_tool.get_user_config(1))
-
-    # query = f"delete from HISTORY"
-    # sqlite_tool.cursor.execute(query)
-    # sqlite_tool.connection.commit()
-    print(sqlite_tool.get_history(user_id=1, session_id=1, date="2024-09-11", batchSize=60))

@@ -133,8 +133,8 @@
   const handleDelete = (index: number, id: number)=>{
     let historyIdList = []
     historyIdList.push(id)
-    if(listPull[index+1]!=null){
-      historyIdList.push(listPull[index+1].id)
+    if(listPull.value[index+1]!=null){
+      historyIdList.push(listPull.value[index+1].id)
     }
     console.log(historyIdList)
     new Promise((resolve) => {

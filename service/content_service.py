@@ -24,5 +24,5 @@ class ContentService:
             history.create_time =  get_current_time()
         return HistoryRepository.save(self.db, history)
     
-    def getHistories(self, user_id: int, session_id: int, date: str, is_important: bool) -> list[History]:
-        return HistoryRepository.find_by_user_id(self.db, user_id)
+    def get_histories(self, user_id: int, session_id: int = None, date: str = None) -> list[History]:
+        return HistoryRepository.find_by_user(self.db, user_id,  session_id, date)

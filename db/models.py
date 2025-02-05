@@ -19,6 +19,9 @@ class UserConfig(Base):
     user_id: int = Column(Integer)
     ai_name: str = Column(String(255), nullable=False)
     ai_role: str = Column(String(255), nullable=False)
+    ai_timbre_name: str = Column(String(255), nullable=False)
+    ai_timbre: str = Column(String(255), nullable=False)
+    ai_tts_model: str = Column(String(255), nullable=False)
     ai_profile: str = Column(String(1000), nullable=False)
     styled_role_id: int = Column(Integer)
     child_name: str = Column(String(255), nullable=False)
@@ -26,6 +29,8 @@ class UserConfig(Base):
     child_age: int = Column(Integer)
     child_profile: str = Column(String(1000), nullable=False)
     learning: str = Column(String(1000), nullable=False)
+    game_enable: bool = Column(Boolean, nullable=False)
+    game_id: int = Column(Integer)
     create_time: str = Column(String(255), nullable=False)
     update_time: str = Column(String(255), nullable=False)
 
@@ -66,7 +71,26 @@ class History(Base):
     role: str = Column(String(255), nullable=False)
     content: str = Column(String, nullable=False)
     is_important: bool = Column(Boolean, nullable=False)
+    create_time= Column(DateTime, nullable=False)
+
+
+class Game(Base):
+    __tablename__ = "GAME"
+
+    id: int = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    title: str = Column(String(255), nullable=False)
+    short_desc: str = Column(String(255), nullable=False)
+    desc: str = Column(String(2000), nullable=False)
+    prompt: str = Column(String(100000), nullable=False)
+    timbre: str = Column(String(255), nullable=False)
+    tts_model: str = Column(String(255), nullable=False)
+    audio_path: str = Column(String(255), nullable=False)
+    icon_path: str = Column(String(255), nullable=False)
+    banner_path: str = Column(String(255), nullable=False)
+    is_vip: bool = Column(Boolean, nullable=False)
+    is_banner: bool = Column(Boolean, nullable=False)
     create_time: str = Column(String(255), nullable=False)
+    update_time: str = Column(String(255), nullable=False)
 
 class SN(Base):
     __tablename__ = "SN"

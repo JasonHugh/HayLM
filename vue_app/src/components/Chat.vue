@@ -114,6 +114,9 @@ const send = () => {
   }
   eventSource.onmessage = (e) => {
     console.log('message', e.data)
+    messageHandler(e)
+  }
+  const messageHandler = (e) => {
     const data = JSON.parse(e.data)
     audio_paths.push(data["audio_path"])
     if (first) {
@@ -123,7 +126,9 @@ const send = () => {
       isAudioEnd = false
       playWebAudio()
     }else{
+      // add content and audio path to item
       responseList.value[responseList.value.length-1]["content"] += data["content"]
+      responseList.value[responseList.value.length-1]["audio_path"] += data["audio_path"]
     }
     // scroll to bottom after DOM loading done
     nextTick(()=>{
@@ -134,9 +139,9 @@ const send = () => {
   }
   eventSource.addEventListener("end", (e: MessageEvent) => {
     console.log('end', e.data)
+    messageHandler(e)
     eventSource.close()
 
-    responseList.value[responseList.value.length-1] = JSON.parse(e.data)
     chatInput.value = ""
     isLoading.value = false;
   })
@@ -216,12 +221,22 @@ const stopRecording = async () => {
   };
 }
 const playWebAudio = async () => {
+  let waitTimes = 0
   while(true){
     console.log(isLoading.value)
     console.log(audio_paths)
     console.log(audio_paths.length)
     if((!isLoading.value && audio_paths.length == 0) || isAudioEnd){
-      break;
+      if(waitTimes > 4){
+        break;
+      }else{
+        waitTimes += 1
+        await new Promise<void>((resolve) => {
+          setTimeout(() => {
+            resolve()
+          }, 500)
+        })
+      }
     }
     const audioPath = audio_paths.shift();
     if(audioPath && (playingAudio.value == null || playingAudio.value.paused)){
@@ -254,7 +269,7 @@ const playWebAudio = async () => {
     await new Promise<void>((resolve) => {
       setTimeout(() => {
         resolve()
-      }, 500)
+      }, 100)
     })
   }
 }

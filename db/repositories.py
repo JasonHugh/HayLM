@@ -3,7 +3,7 @@ from .models import *
 from datetime import datetime
 
 def get_current_time():
-    return datetime.now().strftime("%y-%m-%d %H:%M:%S")
+    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 class UserRepository:
     @staticmethod
@@ -112,8 +112,19 @@ class HistoryRepository:
         return db.query(History).all()
     
     @staticmethod
-    def find_by_user(db: Session, user_id: int, session_id: int, date: str, is_important: bool) -> History:
-        return db.query(History).filter(History.user_id == user_id and History.session_id == user_id).all()
+    def find_by_user(db: Session, user_id: int, session_id: int = None, date: str = None) -> History:
+        query = db.query(History).filter(History.user_id == user_id)
+        if session_id:
+            query = query.filter(History.session_id == session_id)
+        if date:
+            parsed_date = datetime.strptime(date, "%Y-%m-%d")
+            start_of_day = parsed_date.replace(hour=0, minute=0, second=0, microsecond=0)
+            end_of_day = parsed_date.replace(hour=23, minute=59, second=59, microsecond=999999)
+            query = query.filter(
+                History.create_time >= start_of_day,
+                History.create_time <= end_of_day
+            )
+        return query.all()
 
     @staticmethod
     def save(db: Session, history: History) -> History:
@@ -191,10 +202,50 @@ class UserSessionRepository:
     @staticmethod
     def find_by_id(db: Session, id: int) -> UserSession:
         return db.query(UserSession).filter(UserSession.id == id).first()
+    
+    @staticmethod
+    def find_by_user(db: Session, user_id:int) -> list:
+        return db.query(UserSession).filter(UserSession.user_id == user_id).all()
+    
+    @staticmethod
+    def find_by_name(db: Session, user_id: int, name: str) -> UserSession:
+        return db.query(UserSession).filter(UserSession.user_id == user_id).filter(UserSession.name == name).first()
+    
+    @staticmethod
+    def find_by_active(db: Session, user_id: int) -> UserSession:
+        return db.query(UserSession).filter(UserSession.user_id == user_id).filter(UserSession.is_active == True).first()
 
     @staticmethod
     def delete_by_id(db: Session, id: int) -> None:
         us = db.query(UserSession).filter(UserSession.id == id).first()
+        if us is not None:
+            db.delete(us)
+            db.commit()
+
+class GameRepository:
+    @staticmethod
+    def find_all(db: Session) -> list:
+        return db.query(Game).order_by(Game.is_vip.desc(),Game.create_time.desc()).all()
+
+    @staticmethod
+    def save(db: Session, us: Game) -> Game:
+        if us.id:
+            us.update_time = get_current_time()
+            db.merge(us)
+        else:
+            us.create_time = get_current_time()
+            us.update_time = get_current_time()
+            db.add(us)
+        db.commit()
+        return us
+
+    @staticmethod
+    def find_by_id(db: Session, id: int) -> Game:
+        return db.query(Game).filter(Game.id == id).first()
+
+    @staticmethod
+    def delete_by_id(db: Session, id: int) -> None:
+        us = db.query(Game).filter(Game.id == id).first()
         if us is not None:
             db.delete(us)
             db.commit()

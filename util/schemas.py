@@ -21,9 +21,6 @@ class UserResponse(UserBase):
 
 
 class UserConfigBase(BaseModel):
-    ai_name: Annotated[str, StringConstraints(min_length=1, max_length=16)]
-    ai_role: Annotated[str, StringConstraints(min_length=1, max_length=16)]
-    ai_profile: Annotated[str, StringConstraints(min_length=1, max_length=1000)]
     styled_role_id: int
     child_name: Annotated[str, StringConstraints(min_length=1, max_length=16)]
     child_sex: Annotated[str, StringConstraints(min_length=1, max_length=16)]
@@ -33,6 +30,14 @@ class UserConfigBase(BaseModel):
 
 class UserConfigRequest(UserConfigBase):
     pass
+
+class CustomAIRequest(BaseModel):
+    ai_name: Annotated[str, StringConstraints(min_length=1, max_length=16)]
+    ai_role: Annotated[str, StringConstraints(min_length=1, max_length=16)]
+    ai_timbre_name: Annotated[str, StringConstraints(min_length=1, max_length=255)]
+    ai_timbre: Annotated[str, StringConstraints(min_length=1, max_length=255)]
+    ai_tts_model: Annotated[str, StringConstraints(min_length=1, max_length=255)]
+    ai_profile: Annotated[str, StringConstraints(min_length=1, max_length=1000)]
 
 class UserConfigResponse(UserConfigBase):
     id: int

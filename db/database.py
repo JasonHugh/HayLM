@@ -42,6 +42,7 @@ if __name__ == "__main__":
         AI_NAME         TEXT,
         AI_ROLE         TEXT,
         AI_PROFILE      TEXT,
+        AI_TIMBRE_NAME  TEXT,
         AI_TIMBRE       TEXT,
         AI_TTS_MODEL    TEXT,
         STYLED_ROLE_ID  INTEGER,
@@ -50,6 +51,8 @@ if __name__ == "__main__":
         CHILD_AGE       TEXT,
         CHILD_PROFILE   TEXT,
         LEARNING        TEXT,
+        GAME_ENABLE     BOOLEAN,
+        GAME_ID         INTEGER,
         CREATE_TIME     DATETIME,
         UPDATE_TIME     DATETIME);'''))
     # # insert test data
@@ -108,6 +111,30 @@ if __name__ == "__main__":
     db.execute(text("INSERT INTO AI_ROLE (AI_NAME,ROLE_NAME,CONTEXT,PROFILE,TIMBRE,TTS_MODEL,AUDIO_PATH,AVATAR_PATH,CREATE_TIME,UPDATE_TIME) VALUES ('艾莎', '艾莎公主', '《冰雪奇缘》', '艾莎公主，阿伦黛尔王国的大公主。艾莎外表高贵优雅、冷若冰霜、拒人千里，但她其实一直生活在恐惧里，努力隐藏着一个天大秘密，内心与强大的秘密搏斗——她天生具有呼风唤雪的神奇魔力，这种能力很美、但也极度危险。因为小时候她的魔法差点害死妹妹安娜，从此艾莎封闭了内心将自己隔离，时刻都在努力压制与日俱增的魔力。登基大典上的意外导致她的魔法失去控制，使得王国被冰天雪地所覆盖。她害怕自己的魔法会再次失控，于是逃进了雪山，并用魔法制造了一座城堡','sambert-zhimiao-emo-v1','sambert' , 'aisha.wav','aisha-avatar.png',datetime(CURRENT_TIMESTAMP,'localtime'), datetime(CURRENT_TIMESTAMP,'localtime') )"))
 
     print ("AI_ROLE created")
+
+    db.execute(text('''CREATE TABLE IF NOT EXISTS GAME
+        (ID          INTEGER PRIMARY KEY AUTOINCREMENT,
+        TITLE        TEXT,
+        SHORT_DESC   TEXT,
+        DESC         TEXT,
+        PROMPT       TEXT,
+        TIMBRE       TEXT,
+        TTS_MODEL    TEXT,
+        AUDIO_PATH   TEXT,
+        ICON_PATH    TEXT,
+        BANNER_PATH  TEXT,
+        IS_VIP       BOOLEAN,
+        IS_BANNER    BOOLEAN,
+        SORT         INTEGER,
+        CREATE_TIME  DATETIME,
+        UPDATE_TIME  DATETIME);'''))
+    # insert test data
+    with open('/home/lighthouse/HayLM/game_taikong_prompt.txt', 'r', encoding="utf-8") as f:
+        prompt = f.read()
+        print(prompt)
+        db.execute(text(f"INSERT INTO GAME (TITLE,SHORT_DESC,DESC,PROMPT,TIMBRE,TTS_MODEL,AUDIO_PATH,ICON_PATH,BANNER_PATH,IS_VIP,IS_BANNER,SORT,CREATE_TIME,UPDATE_TIME) \
+                    VALUES ('星际探险家', '太空探索为主题的冒险游戏', '这是一个以太空探索为主题的文字冒险游戏，旨在通过互动故事和任务，让孩子们在游戏中学习太阳系、地球、火星、黑洞等太空知识。玩家将扮演小小宇航员，在广袤的宇宙中探索星球，学习太空知识。','{prompt}','sambert-zhimo-v1','sambert','' ,'game/43875b660a26448b9e16ff360d393dde.jpg','game/43875b660a26448b9e16ff360d393dde.jpg',true,true,1,datetime(CURRENT_TIMESTAMP,'localtime'), datetime(CURRENT_TIMESTAMP,'localtime') )"))
+
 
     db.execute(text('''CREATE TABLE IF NOT EXISTS SN
         (ID          INTEGER PRIMARY KEY AUTOINCREMENT,
